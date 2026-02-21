@@ -283,6 +283,19 @@ async def m2_next() -> dict:
 
 
 @app.get(
+    "/v2/tickets/status",
+    response_model=QueueStatus,
+    tags=["Milestone 2"],
+    summary="Pending + processed queue depth",
+)
+async def m2_status() -> QueueStatus:
+    _require_redis()
+    pending   = await _redis_conn.llen("arq:queue")
+    processed = await _redis_conn.zcard(_processed_set())
+    return QueueStatus(pending=pending, processed=processed)
+
+
+@app.get(
     "/v2/tickets/{ticket_id}",
     response_model=TicketResult,
     tags=["Milestone 2"],
@@ -306,16 +319,3 @@ async def m2_get_ticket(ticket_id: str) -> TicketResult:
         model_used=data.get("model_used"),
         processed_at=data.get("processed_at"),
     )
-
-
-@app.get(
-    "/v2/tickets/status",
-    response_model=QueueStatus,
-    tags=["Milestone 2"],
-    summary="Pending + processed queue depth",
-)
-async def m2_status() -> QueueStatus:
-    _require_redis()
-    pending   = await _redis_conn.llen("arq:queue")
-    processed = await _redis_conn.zcard(_processed_set())
-    return QueueStatus(pending=pending, processed=processed)
