@@ -46,6 +46,51 @@ class TestSkillRouter:
             assert "load" in info
             assert "capacity" in info
 
+    # ── Batch constraint optimisation (Hungarian) ────────────────────
+
+    def test_batch_assign_optimal(self):
+        """batch_assign() globally optimises assignment via Hungarian algo."""
+        registry = {
+            "Agent_A": {"skills": {"Technical": 0.9, "Billing": 0.1}, "capacity": 2},
+            "Agent_B": {"skills": {"Billing": 0.8, "Technical": 0.2}, "capacity": 2},
+        }
+        router = SkillRouter(registry)
+        tickets = [
+            {"id": "T-1", "category": "Technical", "urgency": 0.0},
+            {"id": "T-2", "category": "Billing", "urgency": 0.0},
+        ]
+        results = router.batch_assign(tickets)
+        assert results[0]["agent"] == "Agent_A"   # best for Tech
+        assert results[1]["agent"] == "Agent_B"    # best for Billing
+
+    def test_batch_assign_respects_capacity(self):
+        registry = {
+            "Agent_X": {"skills": {"Technical": 1.0}, "capacity": 1},
+        }
+        router = SkillRouter(registry)
+        tickets = [
+            {"id": "T-1", "category": "Technical", "urgency": 0.0},
+            {"id": "T-2", "category": "Technical", "urgency": 0.0},
+        ]
+        results = router.batch_assign(tickets)
+        assigned = [r for r in results if r["agent"] is not None]
+        assert len(assigned) == 1  # only 1 slot available
+
+    def test_batch_assign_empty(self):
+        router = SkillRouter()
+        assert router.batch_assign([]) == []
+
+    def test_batch_assign_all_at_capacity(self):
+        registry = {
+            "Agent_X": {"skills": {"Legal": 0.8}, "capacity": 1},
+        }
+        router = SkillRouter(registry)
+        router.assign("Legal")  # fill the only slot
+        results = router.batch_assign([
+            {"id": "T-1", "category": "Legal", "urgency": 0.0},
+        ])
+        assert results[0]["agent"] is None
+
 
 # ── Circuit breaker ──────────────────────────────────────────────────────
 
