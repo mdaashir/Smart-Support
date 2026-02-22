@@ -1,46 +1,40 @@
 {
   "model": "tfidf_logreg",
-  "timestamp": "2026-02-22T02:02:49.897939+00:00",
-  "accuracy": 1.0,
-  "macro_f1": 1.0,
-  "weighted_f1": 1.0,
+  "timestamp": "2026-02-22T02:26:59.335856+00:00",
+  "accuracy": 0.7744677406298065,
+  "macro_f1": 0.7432167663530729,
+  "weighted_f1": 0.7788716940875429,
   "classification_report": {
     "Billing": {
-      "precision": 1.0,
-      "recall": 1.0,
-      "f1-score": 1.0,
-      "support": 1200.0
+      "precision": 0.5348088531187123,
+      "recall": 0.7551136363636364,
+      "f1-score": 0.6261484098939929,
+      "support": 1760.0
     },
-    "General": {
-      "precision": 1.0,
-      "recall": 1.0,
-      "f1-score": 1.0,
-      "support": 1200.0
-    },
-    "HR": {
-      "precision": 1.0,
-      "recall": 1.0,
-      "f1-score": 1.0,
-      "support": 1200.0
+    "Legal": {
+      "precision": 0.8957072889657159,
+      "recall": 0.7008566275924256,
+      "f1-score": 0.786391804729986,
+      "support": 4436.0
     },
     "Technical": {
-      "precision": 1.0,
-      "recall": 1.0,
-      "f1-score": 1.0,
-      "support": 1200.0
+      "precision": 0.8017820853525089,
+      "recall": 0.8330355692707487,
+      "f1-score": 0.8171100844352398,
+      "support": 6157.0
     },
-    "accuracy": 1.0,
+    "accuracy": 0.7744677406298065,
     "macro avg": {
-      "precision": 1.0,
-      "recall": 1.0,
-      "f1-score": 1.0,
-      "support": 4800.0
+      "precision": 0.7440994091456457,
+      "recall": 0.7630019444089369,
+      "f1-score": 0.7432167663530729,
+      "support": 12353.0
     },
     "weighted avg": {
-      "precision": 1.0,
-      "recall": 1.0,
-      "f1-score": 1.0,
-      "support": 4800.0
+      "precision": 0.797473764660912,
+      "recall": 0.7744677406298065,
+      "f1-score": 0.7788716940875429,
+      "support": 12353.0
     }
   }
 }

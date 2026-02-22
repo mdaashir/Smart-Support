@@ -26,7 +26,7 @@ class DistilBertEmbedder:
         self,
         model_name: str = DISTILBERT["model_name"],
         max_length: int = DISTILBERT["max_length"],
-        batch_size: int = DISTILBERT["batch_size"],
+        batch_size: int = DISTILBERT.get("batch_size", 64),
     ) -> None:
         self.model_name = model_name
         self.max_length = max_length
@@ -66,6 +66,7 @@ class DistilBertTicketClassifier:
         self.label_encoder = LabelEncoder()
         self.clf = LogisticRegression(
             max_iter=DISTILBERT["max_iter"],
+            C=DISTILBERT["C"],
             class_weight="balanced",
         )
 

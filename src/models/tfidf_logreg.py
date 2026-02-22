@@ -26,7 +26,11 @@ class TfidfLogRegClassifier:
                 max_features=TFIDF_LOGREG["max_features"],
                 stop_words=TFIDF_LOGREG["stop_words"],
             )),
-            ("clf", LogisticRegression(max_iter=TFIDF_LOGREG["max_iter"])),
+            ("clf", LogisticRegression(
+                max_iter=TFIDF_LOGREG["max_iter"],
+                C=TFIDF_LOGREG["C"],
+                class_weight="balanced",
+            )),
         ])
 
     # ── Training ─────────────────────────────────────────────────────

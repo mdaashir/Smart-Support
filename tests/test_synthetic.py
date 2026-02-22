@@ -1,9 +1,10 @@
-"""Tests for Milestone 1 — synthetic data, TF-IDF+LogReg, urgency, queue."""
+"""Tests for Milestone 1 — real data, TF-IDF+LogReg, urgency, queue, cross-validation."""
 
 import pytest
-from sklearn.model_selection import train_test_split
+import pandas as pd
+from sklearn.model_selection import train_test_split, StratifiedKFold, cross_val_score
 
-from src.data.synthetic_generator import generate_dataset
+from src.config import CATEGORIES
 from src.models.tfidf_logreg import TfidfLogRegClassifier
 from src.routing.urgency import detect_urgency, PRIORITY_HIGH, PRIORITY_NORMAL
 from src.routing.queue import TicketQueue
@@ -12,16 +13,23 @@ from src.routing.queue import TicketQueue
 # ── Fixtures ─────────────────────────────────────────────────────────────
 
 @pytest.fixture(scope="module")
-def synthetic_df():
-    return generate_dataset(n_per_class=500, seed=42)
+def real_data():
+    """Load a small slice of the real dataset for fast tests."""
+    from src.data.dataset_loader import load_dataset
+    df = load_dataset()
+    # Take a stratified 5 % sample for speed
+    _, sample = train_test_split(
+        df, test_size=0.05, stratify=df["label"], random_state=42,
+    )
+    return sample
 
 
 @pytest.fixture(scope="module")
-def trained_logreg(synthetic_df):
+def trained_logreg(real_data):
     clf = TfidfLogRegClassifier()
     X_train, _, y_train, _ = train_test_split(
-        synthetic_df["text"], synthetic_df["category"],
-        test_size=0.2, stratify=synthetic_df["category"], random_state=42,
+        real_data["text"], real_data["label"],
+        test_size=0.2, stratify=real_data["label"], random_state=42,
     )
     clf.fit(X_train, y_train)
     return clf
@@ -29,32 +37,42 @@ def trained_logreg(synthetic_df):
 
 # ── Data tests ───────────────────────────────────────────────────────────
 
-def test_dataset_shape(synthetic_df):
-    assert synthetic_df.shape == (2000, 2)  # 4 categories × 500
+def test_dataset_has_required_columns(real_data):
+    for col in ("text", "label", "priority_num"):
+        assert col in real_data.columns
 
 
-def test_class_balance(synthetic_df):
-    counts = synthetic_df["category"].value_counts()
-    assert set(counts.index) == {"Billing", "Technical", "HR", "General"}
-    for c in counts:
-        assert c == 500
+def test_categories_match_pdf(real_data):
+    """PDF specifies exactly 3 categories: Billing, Technical, Legal."""
+    assert set(real_data["label"].unique()) == set(CATEGORIES)
 
 
 # ── Model tests ──────────────────────────────────────────────────────────
 
-def test_logreg_accuracy(synthetic_df, trained_logreg):
+def test_logreg_accuracy(real_data, trained_logreg):
     _, X_test, _, y_test = train_test_split(
-        synthetic_df["text"], synthetic_df["category"],
-        test_size=0.2, stratify=synthetic_df["category"], random_state=42,
+        real_data["text"], real_data["label"],
+        test_size=0.2, stratify=real_data["label"], random_state=42,
     )
     metrics = trained_logreg.evaluate(X_test, y_test)
-    assert metrics["accuracy"] >= 0.90
+    assert metrics["accuracy"] >= 0.50  # real data — more realistic bar
 
 
 def test_logreg_predict_returns_valid_classes(trained_logreg):
-    preds = trained_logreg.predict(["refund request", "server down", "PTO request", "general inquiry"])
+    preds = trained_logreg.predict([
+        "refund request", "server down", "legal compliance notice",
+    ])
     for p in preds:
-        assert p in {"Billing", "Technical", "HR", "General"}
+        assert p in set(CATEGORIES)
+
+
+def test_cross_validation_no_overfit(real_data):
+    """CV variance should be low → model generalises, not memorises."""
+    clf = TfidfLogRegClassifier()
+    X, y = real_data["text"], real_data["label"]
+    skf = StratifiedKFold(n_splits=3, shuffle=True, random_state=42)
+    scores = cross_val_score(clf.pipeline, X, y, cv=skf, scoring="f1_macro")
+    assert scores.std() < 0.15, f"High CV variance: {scores}"
 
 
 # ── Urgency tests ────────────────────────────────────────────────────────

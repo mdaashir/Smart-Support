@@ -25,7 +25,11 @@ class TfidfSVCClassifier:
             min_df=TFIDF_SVC["min_df"],
             max_features=TFIDF_SVC["max_features"],
         )
-        self.clf = LinearSVC(class_weight="balanced")
+        self.clf = LinearSVC(
+            C=TFIDF_SVC["C"],
+            class_weight="balanced",
+            max_iter=5_000,
+        )
 
     # ── Training ─────────────────────────────────────────────────────
     def fit(self, X, y) -> "TfidfSVCClassifier":

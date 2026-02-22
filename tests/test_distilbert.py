@@ -7,6 +7,7 @@ to keep the test suite fast without GPU.
 import pytest
 import numpy as np
 
+from src.config import CATEGORIES
 from src.models.distilbert_classifier import DistilBertEmbedder, DistilBertTicketClassifier
 
 
@@ -18,7 +19,7 @@ def embedder():
 
 
 def test_embed_shape(embedder):
-    texts = ["server down", "refund request", "GDPR request"]
+    texts = ["server down", "refund request", "legal compliance notice"]
     embs = embedder.embed(texts)
     assert isinstance(embs, np.ndarray)
     assert embs.shape == (3, 768)
@@ -39,10 +40,9 @@ def mini_classifier():
     texts = [
         "charged twice", "refund request", "invoice incorrect",
         "server down", "app not loading", "500 internal error",
-        "employee onboarding delay", "payroll discrepancy", "PTO request",
-        "general inquiry", "office address question", "status update",
+        "data breach lawsuit", "contract violation", "GDPR complaint",
     ]
-    labels = ["Billing"] * 3 + ["Technical"] * 3 + ["HR"] * 3 + ["General"] * 3
+    labels = ["Billing"] * 3 + ["Technical"] * 3 + ["Legal"] * 3
     clf.fit(texts, labels)
     return clf
 
@@ -50,9 +50,9 @@ def mini_classifier():
 def test_classifier_predict_returns_valid_labels(mini_classifier):
     preds = mini_classifier.predict(["refund needed", "server outage"])
     for p in preds:
-        assert p in {"Billing", "Technical", "HR", "General"}
+        assert p in set(CATEGORIES)
 
 
 def test_classifier_predict_one(mini_classifier):
-    pred = mini_classifier.predict_one("payroll issue with this month salary")
-    assert pred in {"Billing", "Technical", "HR", "General"}
+    pred = mini_classifier.predict_one("contract dispute about last invoice")
+    assert pred in set(CATEGORIES)
