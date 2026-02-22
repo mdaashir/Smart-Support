@@ -3,10 +3,10 @@
 import asyncio
 import pytest
 
-from src.config import CATEGORIES
-from src.routing.skill_router import SkillRouter
-from src.routing.circuit_breaker import CircuitBreaker, BreakerState
-from src.routing.webhook import fire_webhook, get_webhook_log, clear_webhook_log
+from backend.config import CATEGORIES
+from backend.routing.skill_router import SkillRouter
+from backend.routing.circuit_breaker import CircuitBreaker, BreakerState
+from backend.routing.webhook import fire_webhook, get_webhook_log, clear_webhook_log
 
 
 # ── Skill-based routing ─────────────────────────────────────────────────

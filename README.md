@@ -79,23 +79,25 @@ uv sync
 
 ```bash
 # Milestone 1 — real data + Logistic Regression (with 5-fold CV)
-python -m scripts.train --milestone 1
+python -m backend.scripts.train --milestone 1
 
 # Milestone 2 — real data + LinearSVC + urgency regressor
-python -m scripts.train --milestone 2
+python -m backend.scripts.train --milestone 2
 
 # Milestone 3 — real data + DistilBERT (multilingual)
-python -m scripts.train --milestone 3
+python -m backend.scripts.train --milestone 3
 
 # Or train everything
-python -m scripts.train --milestone all
+python -m backend.scripts.train --milestone all
 ```
 
 ### 3. Launch the API
 
 ```bash
 # Choose model: logreg | svc | distilbert
-MODEL_VARIANT=svc uvicorn api.main:app --reload
+MODEL_VARIANT=svc uvicorn backend.api.main:app --reload
+
+# Open the dashboard at http://localhost:8000/ui
 ```
 
 ### 4. Route a ticket (sync)
@@ -156,7 +158,7 @@ The dataset is automatically downloaded and cached on first use. **No synthetic 
 | **Stratified K-Fold CV** | 5-fold cross-validation logged during training |
 | **Regularisation** | C=1.0 for LogReg, SVC; Ridge alpha=1.0 for urgency |
 | **Class balancing** | `class_weight="balanced"` on all classifiers |
-| **SMOTE augmentation** | Available in `src/data/augmentation.py` for imbalanced splits |
+| **SMOTE augmentation** | Available in `backend/data/augmentation.py` for imbalanced splits |
 | **No synthetic templates** | Removed template-based generation — avoids trivial separation |
 | **Real data only** | All milestones train on 61K+ real multilingual tickets |
 
@@ -166,39 +168,43 @@ The dataset is automatically downloaded and cached on first use. **No synthetic 
 
 ```
 Smart-Support/
-├── api/
-│   └── main.py                    # FastAPI REST API (all milestones)
-├── evaluation/
-│   └── evaluator.py               # Metrics + confusion matrix artifacts
-├── scripts/
-│   └── train.py                   # CLI training (real data, CV, all milestones)
-├── src/
+├── frontend/
+│   └── index.html                 # Mission-control dashboard UI
+├── backend/
 │   ├── config.py                  # Centralised config (3 categories, M2/M3 params)
-│   ├── data/
-│   │   ├── dataset_loader.py      # HuggingFace download, caching, feature engineering
-│   │   └── augmentation.py        # SMOTE on TF-IDF space for class balance
+│   ├── api/
+│   │   └── main.py                # FastAPI REST API (all milestones)
 │   ├── models/
 │   │   ├── tfidf_logreg.py        # M1: TF-IDF + Logistic Regression
 │   │   ├── tfidf_svc.py           # M2: Char n-gram TF-IDF + LinearSVC
 │   │   └── distilbert_classifier.py  # M3: DistilBERT embeddings + LogReg
+│   ├── data/
+│   │   ├── dataset_loader.py      # HuggingFace download, caching, feature engineering
+│   │   └── augmentation.py        # SMOTE on TF-IDF space for class balance
 │   ├── preprocessing/
 │   │   └── text_cleaner.py        # Shared text normalisation
-│   └── routing/
-│       ├── urgency.py             # M1: Regex-based urgency (EN + DE)
-│       ├── urgency_regressor.py   # M2: Regression model S ∈ [0,1]
-│       ├── broker.py              # M2: Async broker (202 Accepted, atomic locks)
-│       ├── webhook.py             # M2: Mock Slack/Discord webhook (S > 0.8)
-│       ├── queue.py               # M1: Min-heap priority queue
-│       ├── router.py              # Core ticket router
-│       ├── deduplicator.py        # M3: Sentence embeddings + cosine similarity
-│       ├── circuit_breaker.py     # M3: Latency failover (500ms threshold)
-│       └── skill_router.py        # M3: Agent skill vectors + constraint routing
+│   ├── routing/
+│   │   ├── urgency.py             # M1: Regex-based urgency (EN + DE)
+│   │   ├── urgency_regressor.py   # M2: Regression model S ∈ [0,1]
+│   │   ├── broker.py              # M2: Async broker (202 Accepted, atomic locks)
+│   │   ├── webhook.py             # M2: Mock Slack/Discord webhook (S > 0.8)
+│   │   ├── queue.py               # M1: Min-heap priority queue
+│   │   ├── router.py              # Core ticket router
+│   │   ├── deduplicator.py        # M3: Sentence embeddings + cosine similarity
+│   │   ├── circuit_breaker.py     # M3: Latency failover (500ms threshold)
+│   │   └── skill_router.py        # M3: Agent skill vectors + constraint routing
+│   ├── evaluation/
+│   │   └── evaluator.py           # Metrics + confusion matrix artifacts
+│   └── scripts/
+│       └── train.py               # CLI training (real data, CV, all milestones)
 ├── tests/
 │   ├── test_synthetic.py          # M1 tests (real data, CV, urgency, queue)
 │   ├── test_svc.py                # M2 tests (SVC, urgency regressor)
 │   ├── test_distilbert.py         # M3 smoke tests (embedder, classifier)
 │   ├── test_m2_m3.py              # M2/M3 component tests (broker, dedup, CB, webhook)
 │   └── test_api.py                # API endpoint tests (sync, async, batch, stats)
+├── data/                          # Cached HuggingFace dataset (auto-downloaded)
+├── saved_models/                  # Trained model artifacts (.joblib)
 ├── pyproject.toml
 └── README.md
 ```

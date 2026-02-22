@@ -1,0 +1,2269 @@
+<!DOCTYPE html>
+<html lang="en">
+
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Smart-Support — AI Ticket Router</title>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <link
+            href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Syne:wght@400;600;700;800&family=JetBrains+Mono:ital,wght@0,300;0,400;0,500;0,700;1,400&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap"
+            rel="stylesheet" />
+
+        <style>
+            /* ── RESET & BASE ──────────────────────────────────────────────────── */
+            *,
+            *::before,
+            *::after {
+                box-sizing: border-box;
+                margin: 0;
+                padding: 0;
+            }
+
+            html {
+                font-size: 16px;
+                scroll-behavior: smooth;
+            }
+
+            :root {
+                --bg: #07080F;
+                --s1: #0D1122;
+                --s2: #141830;
+                --s3: #1C2340;
+                --border: rgba(255, 255, 255, 0.065);
+                --border-h: rgba(255, 255, 255, 0.13);
+
+                --cyan: #00D9FF;
+                --cyan-dim: rgba(0, 217, 255, 0.12);
+                --cyan-mid: rgba(0, 217, 255, 0.25);
+                --violet: #8A5CF6;
+                --violet-d: rgba(138, 92, 246, 0.15);
+                --amber: #F59E0B;
+                --amber-d: rgba(245, 158, 11, 0.15);
+                --green: #10F5A0;
+                --green-d: rgba(16, 245, 160, 0.12);
+                --rose: #F43F5E;
+                --rose-d: rgba(244, 63, 94, 0.15);
+
+                --text: #E2E8F8;
+                --muted: #61708F;
+                --subtle: #3A4560;
+
+                --cat-tech: var(--cyan);
+                --cat-legal: var(--violet);
+                --cat-billing: var(--amber);
+
+                --r: 10px;
+                --r-lg: 16px;
+                --font-display: 'Bebas Neue', sans-serif;
+                --font-head: 'Syne', sans-serif;
+                --font-mono: 'JetBrains Mono', monospace;
+                --font-body: 'DM Sans', sans-serif;
+            }
+
+            body {
+                font-family: var(--font-body);
+                background: var(--bg);
+                color: var(--text);
+                min-height: 100vh;
+                overflow-x: hidden;
+            }
+
+            /* ── ANIMATED BG GRID ──────────────────────────────────────────────── */
+            body::before {
+                content: '';
+                position: fixed;
+                inset: 0;
+                background-image:
+                    linear-gradient(rgba(0, 217, 255, 0.025) 1px, transparent 1px),
+                    linear-gradient(90deg, rgba(0, 217, 255, 0.025) 1px, transparent 1px);
+                background-size: 60px 60px;
+                pointer-events: none;
+                z-index: 0;
+            }
+
+            body::after {
+                content: '';
+                position: fixed;
+                inset: 0;
+                background:
+                    radial-gradient(ellipse 80% 60% at 10% 0%, rgba(0, 217, 255, 0.07) 0%, transparent 55%),
+                    radial-gradient(ellipse 60% 50% at 90% 100%, rgba(138, 92, 246, 0.07) 0%, transparent 55%);
+                pointer-events: none;
+                z-index: 0;
+            }
+
+            .page-wrap {
+                position: relative;
+                z-index: 1;
+                max-width: 1440px;
+                margin: 0 auto;
+                padding: 20px 24px 40px;
+            }
+
+            /* ── SCAN LINE EFFECT ──────────────────────────────────────────────── */
+            @keyframes scanline {
+                0% {
+                    transform: translateY(-100%);
+                }
+
+                100% {
+                    transform: translateY(100vh);
+                }
+            }
+
+            .scanline {
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                height: 2px;
+                background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+                opacity: 0.25;
+                animation: scanline 6s linear infinite;
+                pointer-events: none;
+                z-index: 999;
+            }
+
+            /* ── HEADER ────────────────────────────────────────────────────────── */
+            .header {
+                display: flex;
+                align-items: center;
+                gap: 20px;
+                padding: 16px 24px;
+                margin-bottom: 24px;
+                background: var(--s1);
+                border: 1px solid var(--border);
+                border-radius: var(--r-lg);
+                position: relative;
+                overflow: hidden;
+            }
+
+            .header::before {
+                content: '';
+                position: absolute;
+                top: 0;
+                left: 0;
+                right: 0;
+                height: 2px;
+                background: linear-gradient(90deg, transparent, var(--cyan), var(--violet), transparent);
+            }
+
+            .logo {
+                font-family: var(--font-display);
+                font-size: 2rem;
+                letter-spacing: 0.05em;
+                line-height: 1;
+                background: linear-gradient(135deg, var(--cyan) 0%, var(--violet) 100%);
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+                background-clip: text;
+                white-space: nowrap;
+            }
+
+            .logo-sub {
+                font-family: var(--font-mono);
+                font-size: 0.62rem;
+                color: var(--muted);
+                letter-spacing: 0.2em;
+                text-transform: uppercase;
+                display: block;
+                margin-top: 2px;
+            }
+
+            .header-spacer {
+                flex: 1;
+            }
+
+            .header-pills {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                flex-wrap: wrap;
+            }
+
+            .pill {
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                padding: 5px 12px;
+                border-radius: 999px;
+                font-family: var(--font-mono);
+                font-size: 0.7rem;
+                font-weight: 500;
+                border: 1px solid var(--border);
+                background: var(--s2);
+                white-space: nowrap;
+            }
+
+            .pill.live {
+                border-color: var(--cyan-mid);
+                background: var(--cyan-dim);
+                color: var(--cyan);
+            }
+
+            .pill.model {
+                border-color: rgba(138, 92, 246, 0.3);
+                background: var(--violet-d);
+                color: var(--violet);
+            }
+
+            .pill.uptime {
+                color: var(--muted);
+            }
+
+            @keyframes blink {
+
+                0%,
+                100% {
+                    opacity: 1
+                }
+
+                50% {
+                    opacity: 0.2
+                }
+            }
+
+            .live-dot {
+                width: 7px;
+                height: 7px;
+                border-radius: 50%;
+                background: var(--cyan);
+                animation: blink 1.8s ease-in-out infinite;
+            }
+
+            /* ── STAT TILES ────────────────────────────────────────────────────── */
+            .stat-row {
+                display: grid;
+                grid-template-columns: repeat(4, 1fr);
+                gap: 14px;
+                margin-bottom: 20px;
+            }
+
+            @media (max-width: 900px) {
+                .stat-row {
+                    grid-template-columns: repeat(2, 1fr);
+                }
+            }
+
+            @media (max-width: 500px) {
+                .stat-row {
+                    grid-template-columns: 1fr;
+                }
+            }
+
+            .stat-tile {
+                padding: 20px 22px;
+                background: var(--s1);
+                border: 1px solid var(--border);
+                border-radius: var(--r);
+                position: relative;
+                overflow: hidden;
+                transition: border-color 0.2s, transform 0.15s;
+            }
+
+            .stat-tile:hover {
+                border-color: var(--border-h);
+                transform: translateY(-2px);
+            }
+
+            .stat-tile::after {
+                content: '';
+                position: absolute;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                height: 2px;
+                border-radius: 0 0 var(--r) var(--r);
+            }
+
+            .stat-tile.t-cyan::after {
+                background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+            }
+
+            .stat-tile.t-amber::after {
+                background: linear-gradient(90deg, transparent, var(--amber), transparent);
+            }
+
+            .stat-tile.t-violet::after {
+                background: linear-gradient(90deg, transparent, var(--violet), transparent);
+            }
+
+            .stat-tile.t-rose::after {
+                background: linear-gradient(90deg, transparent, var(--rose), transparent);
+            }
+
+            .stat-icon {
+                width: 32px;
+                height: 32px;
+                border-radius: 8px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 1rem;
+                margin-bottom: 12px;
+            }
+
+            .t-cyan .stat-icon {
+                background: var(--cyan-dim);
+                color: var(--cyan);
+            }
+
+            .t-amber .stat-icon {
+                background: var(--amber-d);
+                color: var(--amber);
+            }
+
+            .t-violet.stat-icon,
+            .t-violet .stat-icon {
+                background: var(--violet-d);
+                color: var(--violet);
+            }
+
+            .t-rose .stat-icon {
+                background: var(--rose-d);
+                color: var(--rose);
+            }
+
+            .stat-val {
+                font-family: var(--font-mono);
+                font-size: 2.4rem;
+                font-weight: 700;
+                line-height: 1;
+                margin-bottom: 4px;
+                letter-spacing: -0.02em;
+            }
+
+            .t-cyan .stat-val {
+                color: var(--cyan);
+            }
+
+            .t-amber .stat-val {
+                color: var(--amber);
+            }
+
+            .t-violet .stat-val {
+                color: var(--violet);
+            }
+
+            .t-rose .stat-val {
+                color: var(--rose);
+            }
+
+            .stat-label {
+                font-family: var(--font-mono);
+                font-size: 0.65rem;
+                text-transform: uppercase;
+                letter-spacing: 0.18em;
+                color: var(--muted);
+            }
+
+            .stat-delta {
+                position: absolute;
+                top: 16px;
+                right: 16px;
+                font-family: var(--font-mono);
+                font-size: 0.65rem;
+                color: var(--muted);
+            }
+
+            /* ── MAIN GRID ─────────────────────────────────────────────────────── */
+            .main-grid {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 14px;
+                margin-bottom: 14px;
+            }
+
+            @media (max-width: 960px) {
+                .main-grid {
+                    grid-template-columns: 1fr;
+                }
+            }
+
+            .bottom-grid {
+                display: grid;
+                grid-template-columns: 1fr 1fr 1fr;
+                gap: 14px;
+            }
+
+            @media (max-width: 960px) {
+                .bottom-grid {
+                    grid-template-columns: 1fr;
+                }
+            }
+
+            /* ── CARD BASE ─────────────────────────────────────────────────────── */
+            .card {
+                background: var(--s1);
+                border: 1px solid var(--border);
+                border-radius: var(--r-lg);
+                overflow: hidden;
+            }
+
+            .card-head {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                padding: 16px 20px 13px;
+                border-bottom: 1px solid var(--border);
+            }
+
+            .card-title {
+                font-family: var(--font-head);
+                font-size: 0.82rem;
+                font-weight: 700;
+                letter-spacing: 0.03em;
+                text-transform: uppercase;
+                color: var(--text);
+            }
+
+            .card-badge {
+                font-family: var(--font-mono);
+                font-size: 0.62rem;
+                font-weight: 500;
+                padding: 3px 8px;
+                border-radius: 999px;
+                text-transform: uppercase;
+                letter-spacing: 0.08em;
+            }
+
+            .badge-cyan {
+                background: var(--cyan-dim);
+                color: var(--cyan);
+                border: 1px solid rgba(0, 217, 255, 0.2);
+            }
+
+            .badge-violet {
+                background: var(--violet-d);
+                color: var(--violet);
+                border: 1px solid rgba(138, 92, 246, 0.25);
+            }
+
+            .badge-amber {
+                background: var(--amber-d);
+                color: var(--amber);
+                border: 1px solid rgba(245, 158, 11, 0.25);
+            }
+
+            .badge-green {
+                background: var(--green-d);
+                color: var(--green);
+                border: 1px solid rgba(16, 245, 160, 0.2);
+            }
+
+            .badge-muted {
+                background: var(--s3);
+                color: var(--muted);
+                border: 1px solid var(--border);
+            }
+
+            .card-body {
+                padding: 20px;
+            }
+
+            /* ── TICKET FORM ───────────────────────────────────────────────────── */
+            .form-group {
+                margin-bottom: 14px;
+            }
+
+            .form-label {
+                display: block;
+                font-family: var(--font-mono);
+                font-size: 0.65rem;
+                text-transform: uppercase;
+                letter-spacing: 0.15em;
+                color: var(--muted);
+                margin-bottom: 6px;
+            }
+
+            .form-control {
+                width: 100%;
+                padding: 10px 14px;
+                background: var(--s2);
+                border: 1px solid var(--border);
+                border-radius: 8px;
+                color: var(--text);
+                font-family: var(--font-body);
+                font-size: 0.88rem;
+                resize: none;
+                outline: none;
+                transition: border-color 0.2s, box-shadow 0.2s;
+            }
+
+            .form-control:focus {
+                border-color: rgba(0, 217, 255, 0.4);
+                box-shadow: 0 0 0 3px rgba(0, 217, 255, 0.08);
+            }
+
+            .form-control::placeholder {
+                color: var(--subtle);
+            }
+
+            textarea.form-control {
+                min-height: 90px;
+            }
+
+            .model-tabs {
+                display: flex;
+                gap: 6px;
+                margin-bottom: 16px;
+                padding: 4px;
+                background: var(--s2);
+                border-radius: 10px;
+                border: 1px solid var(--border);
+            }
+
+            .model-tab {
+                flex: 1;
+                padding: 7px 12px;
+                border-radius: 7px;
+                font-family: var(--font-mono);
+                font-size: 0.7rem;
+                font-weight: 500;
+                cursor: pointer;
+                border: none;
+                background: transparent;
+                color: var(--muted);
+                transition: all 0.2s;
+                text-transform: uppercase;
+                letter-spacing: 0.06em;
+            }
+
+            .model-tab.active {
+                background: var(--s3);
+                color: var(--cyan);
+                border: 1px solid rgba(0, 217, 255, 0.25);
+            }
+
+            .model-tab:hover:not(.active) {
+                color: var(--text);
+            }
+
+            .btn-row {
+                display: flex;
+                gap: 10px;
+            }
+
+            .btn {
+                flex: 1;
+                padding: 10px 18px;
+                border-radius: 8px;
+                font-family: var(--font-head);
+                font-size: 0.82rem;
+                font-weight: 700;
+                cursor: pointer;
+                border: none;
+                transition: all 0.18s;
+                letter-spacing: 0.03em;
+                position: relative;
+                overflow: hidden;
+            }
+
+            .btn::after {
+                content: '';
+                position: absolute;
+                inset: 0;
+                background: white;
+                opacity: 0;
+                transition: opacity 0.15s;
+            }
+
+            .btn:hover::after {
+                opacity: 0.06;
+            }
+
+            .btn:active {
+                transform: scale(0.98);
+            }
+
+            .btn:disabled {
+                opacity: 0.4;
+                cursor: not-allowed;
+            }
+
+            .btn-primary {
+                background: linear-gradient(135deg, var(--cyan) 0%, #0095b3 100%);
+                color: var(--bg);
+            }
+
+            .btn-secondary {
+                background: var(--s3);
+                color: var(--violet);
+                border: 1px solid rgba(138, 92, 246, 0.3);
+            }
+
+            .btn-secondary:hover {
+                border-color: rgba(138, 92, 246, 0.6);
+            }
+
+            @keyframes spin {
+                to {
+                    transform: rotate(360deg);
+                }
+            }
+
+            .btn-spinner {
+                display: inline-block;
+                width: 14px;
+                height: 14px;
+                border: 2px solid rgba(0, 0, 0, 0.3);
+                border-top-color: currentColor;
+                border-radius: 50%;
+                animation: spin 0.7s linear infinite;
+                vertical-align: middle;
+                margin-right: 6px;
+            }
+
+            /* ── RESULT PANEL ──────────────────────────────────────────────────── */
+            .result-empty {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                gap: 12px;
+                height: 280px;
+                color: var(--subtle);
+                text-align: center;
+            }
+
+            .result-empty-icon {
+                font-size: 2.8rem;
+                opacity: 0.35;
+                filter: grayscale(1);
+            }
+
+            .result-empty-text {
+                font-family: var(--font-mono);
+                font-size: 0.72rem;
+                letter-spacing: 0.1em;
+            }
+
+            @keyframes slideUp {
+                from {
+                    opacity: 0;
+                    transform: translateY(16px);
+                }
+
+                to {
+                    opacity: 1;
+                    transform: translateY(0);
+                }
+            }
+
+            .result-content {
+                animation: slideUp 0.35s ease;
+            }
+
+            .cat-tag {
+                display: inline-flex;
+                align-items: center;
+                gap: 8px;
+                padding: 6px 14px;
+                border-radius: 999px;
+                font-family: var(--font-mono);
+                font-size: 0.78rem;
+                font-weight: 700;
+                letter-spacing: 0.06em;
+                text-transform: uppercase;
+                margin-bottom: 16px;
+            }
+
+            .cat-tag.Technical {
+                background: var(--cyan-dim);
+                color: var(--cyan);
+                border: 1px solid rgba(0, 217, 255, 0.3);
+            }
+
+            .cat-tag.Legal {
+                background: var(--violet-d);
+                color: var(--violet);
+                border: 1px solid rgba(138, 92, 246, 0.3);
+            }
+
+            .cat-tag.Billing {
+                background: var(--amber-d);
+                color: var(--amber);
+                border: 1px solid rgba(245, 158, 11, 0.3);
+            }
+
+            .result-grid {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 12px;
+                margin-bottom: 14px;
+            }
+
+            .result-field {
+                background: var(--s2);
+                border-radius: 8px;
+                padding: 12px 14px;
+                border: 1px solid var(--border);
+            }
+
+            .rf-label {
+                font-family: var(--font-mono);
+                font-size: 0.6rem;
+                text-transform: uppercase;
+                letter-spacing: 0.15em;
+                color: var(--muted);
+                margin-bottom: 5px;
+            }
+
+            .rf-val {
+                font-family: var(--font-mono);
+                font-size: 0.95rem;
+                font-weight: 500;
+                color: var(--text);
+            }
+
+            .rf-val.urgent-high {
+                color: var(--amber);
+            }
+
+            .rf-val.urgent-normal {
+                color: var(--green);
+            }
+
+            /* ── URGENCY GAUGE ─────────────────────────────────────────────────── */
+            .urgency-gauge-wrap {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                padding: 16px 0 8px;
+                margin-bottom: 14px;
+            }
+
+            .gauge-label {
+                font-family: var(--font-mono);
+                font-size: 0.62rem;
+                text-transform: uppercase;
+                letter-spacing: 0.15em;
+                color: var(--muted);
+                margin-bottom: 10px;
+            }
+
+            .gauge-svg {
+                overflow: visible;
+            }
+
+            #gaugeNeedle,
+            #gaugeFill {
+                transition: all 0.8s cubic-bezier(0.34, 1.3, 0.64, 1);
+            }
+
+            .gauge-score {
+                font-family: var(--font-mono);
+                font-size: 1.9rem;
+                font-weight: 700;
+                line-height: 1;
+                margin-top: 8px;
+            }
+
+            .gauge-sublabel {
+                font-family: var(--font-mono);
+                font-size: 0.65rem;
+                color: var(--muted);
+                margin-top: 3px;
+            }
+
+            /* ── AGENT ─────────────────────────────────────────────────────────── */
+            .agent-badge {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                background: var(--s2);
+                border: 1px solid var(--border);
+                border-radius: 8px;
+                padding: 10px 14px;
+                margin-bottom: 14px;
+            }
+
+            .agent-avatar {
+                width: 34px;
+                height: 34px;
+                border-radius: 50%;
+                background: linear-gradient(135deg, var(--violet), var(--cyan));
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-family: var(--font-mono);
+                font-size: 0.8rem;
+                font-weight: 700;
+                color: var(--bg);
+                flex-shrink: 0;
+            }
+
+            .agent-name {
+                font-family: var(--font-mono);
+                font-size: 0.9rem;
+                font-weight: 600;
+                color: var(--text);
+            }
+
+            .agent-skill {
+                font-family: var(--font-mono);
+                font-size: 0.62rem;
+                color: var(--muted);
+                margin-top: 2px;
+            }
+
+            /* ── DEDUP ─────────────────────────────────────────────────────────── */
+            .dedup-status {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                padding: 8px 14px;
+                border-radius: 8px;
+                font-family: var(--font-mono);
+                font-size: 0.72rem;
+                font-weight: 500;
+            }
+
+            .dedup-unique {
+                background: var(--green-d);
+                color: var(--green);
+                border: 1px solid rgba(16, 245, 160, 0.2);
+            }
+
+            .dedup-dup {
+                background: var(--amber-d);
+                color: var(--amber);
+                border: 1px solid rgba(245, 158, 11, 0.2);
+            }
+
+            .dedup-icon {
+                font-size: 0.9rem;
+            }
+
+            /* ── ASYNC JOB STATUS ──────────────────────────────────────────────── */
+            .job-tracker {
+                margin-top: 14px;
+                background: var(--s2);
+                border: 1px solid var(--border);
+                border-radius: 8px;
+                padding: 12px 14px;
+                display: none;
+            }
+
+            .job-tracker.visible {
+                display: block;
+                animation: slideUp 0.3s ease;
+            }
+
+            .job-header {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                margin-bottom: 8px;
+            }
+
+            .job-id {
+                font-family: var(--font-mono);
+                font-size: 0.65rem;
+                color: var(--muted);
+                word-break: break-all;
+            }
+
+            .job-status-badge {
+                font-family: var(--font-mono);
+                font-size: 0.62rem;
+                font-weight: 700;
+                padding: 2px 8px;
+                border-radius: 999px;
+                text-transform: uppercase;
+                letter-spacing: 0.08em;
+            }
+
+            .js-pending {
+                background: var(--amber-d);
+                color: var(--amber);
+            }
+
+            .js-done {
+                background: var(--green-d);
+                color: var(--green);
+            }
+
+            .js-processing {
+                background: var(--cyan-dim);
+                color: var(--cyan);
+            }
+
+            .js-failed {
+                background: var(--rose-d);
+                color: var(--rose);
+            }
+
+            /* ── CATEGORY DISTRIBUTION ─────────────────────────────────────────── */
+            .cat-bar-group {
+                margin-bottom: 12px;
+            }
+
+            .cat-bar-head {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 5px;
+            }
+
+            .cat-bar-name {
+                font-family: var(--font-mono);
+                font-size: 0.72rem;
+                font-weight: 500;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+            }
+
+            .cat-dot {
+                width: 7px;
+                height: 7px;
+                border-radius: 50%;
+                flex-shrink: 0;
+            }
+
+            .cat-bar-count {
+                font-family: var(--font-mono);
+                font-size: 0.72rem;
+                color: var(--muted);
+            }
+
+            .cat-bar-track {
+                height: 6px;
+                background: var(--s3);
+                border-radius: 999px;
+                overflow: hidden;
+            }
+
+            .cat-bar-fill {
+                height: 100%;
+                border-radius: 999px;
+                transition: width 0.9s cubic-bezier(0.34, 1.3, 0.64, 1);
+            }
+
+            .fill-cyan {
+                background: linear-gradient(90deg, var(--cyan), rgba(0, 217, 255, 0.5));
+            }
+
+            .fill-violet {
+                background: linear-gradient(90deg, var(--violet), rgba(138, 92, 246, 0.5));
+            }
+
+            .fill-amber {
+                background: linear-gradient(90deg, var(--amber), rgba(245, 158, 11, 0.5));
+            }
+
+            /* mini donut */
+            .donut-wrap {
+                display: flex;
+                justify-content: center;
+                margin-bottom: 16px;
+                position: relative;
+            }
+
+            .donut-center {
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                text-align: center;
+            }
+
+            .donut-center-val {
+                font-family: var(--font-mono);
+                font-size: 1.5rem;
+                font-weight: 700;
+                color: var(--text);
+                line-height: 1;
+            }
+
+            .donut-center-lbl {
+                font-family: var(--font-mono);
+                font-size: 0.58rem;
+                color: var(--muted);
+                text-transform: uppercase;
+                letter-spacing: 0.12em;
+            }
+
+            /* ── AGENT LOAD ────────────────────────────────────────────────────── */
+            .agent-row {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                padding: 10px 0;
+                border-bottom: 1px solid var(--border);
+            }
+
+            .agent-row:last-child {
+                border-bottom: none;
+            }
+
+            .agent-av-sm {
+                width: 30px;
+                height: 30px;
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-family: var(--font-mono);
+                font-size: 0.68rem;
+                font-weight: 700;
+                color: var(--bg);
+                flex-shrink: 0;
+            }
+
+            .av-A {
+                background: linear-gradient(135deg, var(--cyan), #0073a3);
+            }
+
+            .av-B {
+                background: linear-gradient(135deg, var(--amber), #c47b00);
+            }
+
+            .av-C {
+                background: linear-gradient(135deg, var(--violet), #5e3de0);
+            }
+
+            .av-D {
+                background: linear-gradient(135deg, var(--green), #00a86b);
+            }
+
+            .agent-info {
+                flex: 1;
+                min-width: 0;
+            }
+
+            .agent-row-name {
+                font-family: var(--font-mono);
+                font-size: 0.8rem;
+                font-weight: 600;
+                color: var(--text);
+                margin-bottom: 4px;
+            }
+
+            .agent-skills-mini {
+                display: flex;
+                gap: 6px;
+            }
+
+            .skill-chip {
+                font-family: var(--font-mono);
+                font-size: 0.58rem;
+                padding: 1px 6px;
+                border-radius: 999px;
+                letter-spacing: 0.05em;
+            }
+
+            .chip-tech {
+                background: var(--cyan-dim);
+                color: var(--cyan);
+            }
+
+            .chip-legal {
+                background: var(--violet-d);
+                color: var(--violet);
+            }
+
+            .chip-billing {
+                background: var(--amber-d);
+                color: var(--amber);
+            }
+
+            .agent-load-bar {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+            }
+
+            .load-track {
+                width: 70px;
+                height: 5px;
+                background: var(--s3);
+                border-radius: 999px;
+                overflow: hidden;
+            }
+
+            .load-fill {
+                height: 100%;
+                border-radius: 999px;
+                transition: width 0.6s ease;
+            }
+
+            .load-pct {
+                font-family: var(--font-mono);
+                font-size: 0.65rem;
+                color: var(--muted);
+                min-width: 28px;
+                text-align: right;
+            }
+
+            /* ── INCIDENTS ─────────────────────────────────────────────────────── */
+            .incident-empty {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                height: 120px;
+                gap: 8px;
+            }
+
+            .incident-empty-icon {
+                font-size: 1.8rem;
+                opacity: 0.3;
+            }
+
+            .incident-empty-text {
+                font-family: var(--font-mono);
+                font-size: 0.67rem;
+                color: var(--subtle);
+                text-transform: uppercase;
+                letter-spacing: 0.12em;
+            }
+
+            @keyframes fadeIn {
+                from {
+                    opacity: 0;
+                    transform: translateY(8px)
+                }
+
+                to {
+                    opacity: 1;
+                    transform: translateY(0)
+                }
+            }
+
+            .incident-card {
+                background: var(--s2);
+                border: 1px solid var(--border);
+                border-left: 3px solid var(--rose);
+                border-radius: 8px;
+                padding: 10px 12px;
+                margin-bottom: 8px;
+                animation: fadeIn 0.3s ease;
+            }
+
+            .incident-id {
+                font-family: var(--font-mono);
+                font-size: 0.62rem;
+                color: var(--rose);
+                margin-bottom: 4px;
+                text-transform: uppercase;
+            }
+
+            .incident-text {
+                font-size: 0.78rem;
+                color: var(--text);
+                margin-bottom: 5px;
+                display: -webkit-box;
+                -webkit-line-clamp: 2;
+                -webkit-box-orient: vertical;
+                overflow: hidden;
+            }
+
+            .incident-meta {
+                font-family: var(--font-mono);
+                font-size: 0.62rem;
+                color: var(--muted);
+            }
+
+            /* ── HISTORY TABLE ─────────────────────────────────────────────────── */
+            .history-list {
+                max-height: 280px;
+                overflow-y: auto;
+            }
+
+            .history-list::-webkit-scrollbar {
+                width: 4px;
+            }
+
+            .history-list::-webkit-scrollbar-track {
+                background: transparent;
+            }
+
+            .history-list::-webkit-scrollbar-thumb {
+                background: var(--subtle);
+                border-radius: 2px;
+            }
+
+            .history-item {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                padding: 8px 0;
+                border-bottom: 1px solid var(--border);
+                animation: fadeIn 0.3s ease;
+            }
+
+            .history-item:last-child {
+                border-bottom: none;
+            }
+
+            .h-cat-dot {
+                width: 8px;
+                height: 8px;
+                border-radius: 50%;
+                flex-shrink: 0;
+            }
+
+            .h-subject {
+                flex: 1;
+                font-size: 0.78rem;
+                color: var(--text);
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+
+            .h-cat {
+                font-family: var(--font-mono);
+                font-size: 0.62rem;
+                font-weight: 500;
+                padding: 2px 7px;
+                border-radius: 999px;
+            }
+
+            .h-score {
+                font-family: var(--font-mono);
+                font-size: 0.68rem;
+                color: var(--muted);
+                min-width: 38px;
+                text-align: right;
+            }
+
+            /* ── ERROR TOAST ───────────────────────────────────────────────────── */
+            @keyframes toastIn {
+                from {
+                    opacity: 0;
+                    transform: translateX(20px);
+                }
+
+                to {
+                    opacity: 1;
+                    transform: translateX(0);
+                }
+            }
+
+            .toast-container {
+                position: fixed;
+                bottom: 24px;
+                right: 24px;
+                z-index: 1000;
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+            }
+
+            .toast {
+                background: var(--s2);
+                border: 1px solid var(--border);
+                border-left: 3px solid var(--rose);
+                border-radius: 8px;
+                padding: 10px 14px;
+                font-family: var(--font-mono);
+                font-size: 0.72rem;
+                color: var(--text);
+                max-width: 340px;
+                animation: toastIn 0.3s ease;
+                box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+            }
+
+            .toast.success {
+                border-left-color: var(--green);
+            }
+
+            .toast.info {
+                border-left-color: var(--cyan);
+            }
+
+            /* ── CONNECTION STATUS ─────────────────────────────────────────────── */
+            .conn-status {
+                display: flex;
+                align-items: center;
+                gap: 5px;
+                font-family: var(--font-mono);
+                font-size: 0.65rem;
+            }
+
+            .conn-dot {
+                width: 6px;
+                height: 6px;
+                border-radius: 50%;
+            }
+
+            .conn-dot.ok {
+                background: var(--green);
+                box-shadow: 0 0 6px var(--green);
+            }
+
+            .conn-dot.err {
+                background: var(--rose);
+                box-shadow: 0 0 6px var(--rose);
+            }
+
+            .conn-dot.checking {
+                background: var(--amber);
+                animation: blink 1s infinite;
+            }
+
+            /* ── NUMBER COUNTER ANIMATION ──────────────────────────────────────── */
+            .cnt-num {
+                transition: all 0.05s;
+            }
+
+            @keyframes numPop {
+                0% {
+                    transform: scale(1)
+                }
+
+                50% {
+                    transform: scale(1.08)
+                }
+
+                100% {
+                    transform: scale(1)
+                }
+            }
+
+            .num-pop {
+                animation: numPop 0.25s ease;
+            }
+
+            /* ── MINI MILESTONE PROGRESS ───────────────────────────────────────── */
+            .milestone-bar {
+                display: flex;
+                align-items: stretch;
+                gap: 6px;
+                margin-top: 14px;
+            }
+
+            .ms-step {
+                flex: 1;
+                background: var(--s2);
+                border: 1px solid var(--border);
+                border-radius: 6px;
+                padding: 8px;
+                text-align: center;
+            }
+
+            .ms-step.active {
+                background: var(--cyan-dim);
+                border-color: rgba(0, 217, 255, 0.3);
+            }
+
+            .ms-num {
+                font-family: var(--font-display);
+                font-size: 1.2rem;
+                color: var(--cyan);
+                line-height: 1;
+            }
+
+            .ms-step:not(.active) .ms-num {
+                color: var(--subtle);
+            }
+
+            .ms-lbl {
+                font-family: var(--font-mono);
+                font-size: 0.58rem;
+                color: var(--muted);
+                text-transform: uppercase;
+                letter-spacing: 0.1em;
+                margin-top: 2px;
+            }
+
+            /* ── RESPONSIVE TWEAKS ─────────────────────────────────────────────── */
+            @media (max-width: 700px) {
+                .header {
+                    flex-wrap: wrap;
+                }
+
+                .logo {
+                    font-size: 1.6rem;
+                }
+            }
+        </style>
+    </head>
+
+    <body>
+        <div class="scanline"></div>
+        <canvas id="bgCanvas" style="position:fixed;inset:0;pointer-events:none;z-index:0;opacity:0.35"></canvas>
+
+        <div class="page-wrap">
+
+            <!-- ── HEADER ─────────────────────────────────────────────────────── -->
+            <header class="header">
+                <div>
+                    <span class="logo">Smart-Support</span>
+                    <span class="logo-sub">AI Ticket Routing Engine · v1.0.0</span>
+                </div>
+                <div class="header-spacer"></div>
+                <div class="header-pills">
+                    <div class="pill live"><span class="live-dot"></span><span id="connLabel">Connecting…</span></div>
+                    <div class="pill model" id="modelPill">Model: —</div>
+                    <div class="pill uptime">⏱ <span id="uptimeLabel">—</span></div>
+                    <div class="conn-status">
+                        <span class="conn-dot checking" id="connDot"></span>
+                        <span id="connText">API</span>
+                    </div>
+                </div>
+            </header>
+
+            <!-- ── STAT TILES ──────────────────────────────────────────────────── -->
+            <div class="stat-row">
+                <div class="stat-tile t-cyan">
+                    <div class="stat-icon">⟁</div>
+                    <div class="stat-val"><span class="cnt-num" id="statTotal">0</span></div>
+                    <div class="stat-label">Tickets Routed</div>
+                    <div class="stat-delta" id="statTotalDelta">—</div>
+                </div>
+                <div class="stat-tile t-amber">
+                    <div class="stat-icon">⚡</div>
+                    <div class="stat-val"><span class="cnt-num" id="statUrgent">0</span></div>
+                    <div class="stat-label">High Urgency</div>
+                </div>
+                <div class="stat-tile t-violet">
+                    <div class="stat-icon">⌁</div>
+                    <div class="stat-val"><span class="cnt-num" id="statWebhook">0</span></div>
+                    <div class="stat-label">Webhook Fires</div>
+                </div>
+                <div class="stat-tile t-rose">
+                    <div class="stat-icon">◈</div>
+                    <div class="stat-val"><span class="cnt-num" id="statIncidents">0</span></div>
+                    <div class="stat-label">Master Incidents</div>
+                </div>
+            </div>
+
+            <!-- ── MAIN GRID ── FORM + RESULT ─────────────────────────────────── -->
+            <div class="main-grid">
+
+                <!-- ROUTE TICKET FORM -->
+                <div class="card">
+                    <div class="card-head">
+                        <span class="card-title">Route a Ticket</span>
+                        <span class="card-badge badge-cyan" id="formModeBadge">Sync</span>
+                    </div>
+                    <div class="card-body">
+                        <!-- Model indicator (reflects server startup) -->
+                        <div class="model-tabs" id="modelTabs"
+                            title="Model is set at server startup via MODEL_VARIANT env var">
+                            <button class="model-tab active" data-model="logreg" onclick="selectModel('logreg')">M1
+                                LogReg</button>
+                            <button class="model-tab" data-model="svc" onclick="selectModel('svc')">M2 SVC</button>
+                            <button class="model-tab" data-model="distilbert" onclick="selectModel('distilbert')">M3
+                                BERT</button>
+                        </div>
+                        <div
+                            style="font-family:var(--font-mono);font-size:0.6rem;color:var(--subtle);margin-bottom:14px;margin-top:-8px;">
+                            ↑ Set at launch via <code style="color:var(--cyan)">MODEL_VARIANT=svc uvicorn …</code>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="ticketSubject">Subject</label>
+                            <input class="form-control" id="ticketSubject" type="text"
+                                placeholder="e.g. Server down — production outage" />
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="ticketBody">Body</label>
+                            <textarea class="form-control" id="ticketBody"
+                                placeholder="Describe the issue in detail…"></textarea>
+                        </div>
+                        <div class="btn-row">
+                            <button class="btn btn-primary" id="btnSync" onclick="routeSync()">⟁ Route Now</button>
+                            <button class="btn btn-secondary" id="btnAsync" onclick="routeAsync()">⌁ Async
+                                (202)</button>
+                        </div>
+
+                        <!-- Async job poll tracker -->
+                        <div class="job-tracker" id="jobTracker">
+                            <div class="job-header">
+                                <span class="job-id" id="jobIdLabel">job: —</span>
+                                <span class="job-status-badge js-pending" id="jobStatusBadge">Pending</span>
+                            </div>
+                            <div id="jobResultPreview"
+                                style="font-family:var(--font-mono);font-size:0.7rem;color:var(--muted);"></div>
+                        </div>
+
+                        <!-- Quick-fill examples -->
+                        <div style="margin-top:14px;">
+                            <div
+                                style="font-family:var(--font-mono);font-size:0.6rem;text-transform:uppercase;letter-spacing:0.15em;color:var(--subtle);margin-bottom:8px;">
+                                Quick Examples</div>
+                            <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                                <button class="btn"
+                                    style="flex:0;padding:4px 10px;font-size:0.67rem;background:var(--cyan-dim);color:var(--cyan);border:1px solid rgba(0,217,255,0.2);"
+                                    onclick="fillExample('Server outage', 'Our entire production server is down. Getting 500 errors everywhere. Critical — please fix ASAP!')">
+                                    ⚡ Critical Tech
+                                </button>
+                                <button class="btn"
+                                    style="flex:0;padding:4px 10px;font-size:0.67rem;background:var(--amber-d);color:var(--amber);border:1px solid rgba(245,158,11,0.2);"
+                                    onclick="fillExample('Double charged', 'I was billed twice for my subscription this month. Please refund the duplicate charge.')">
+                                    💳 Billing
+                                </button>
+                                <button class="btn"
+                                    style="flex:0;padding:4px 10px;font-size:0.67rem;background:var(--violet-d);color:var(--violet);border:1px solid rgba(138,92,246,0.2);"
+                                    onclick="fillExample('GDPR data request', 'I am requesting all my personal data under Article 15 GDPR. Please provide a data export.')">
+                                    ⚖ Legal
+                                </button>
+                                <button class="btn"
+                                    style="flex:0;padding:4px 10px;font-size:0.67rem;background:var(--s3);color:var(--muted);border:1px solid var(--border);"
+                                    onclick="fillExample('Serverausfall dringend', 'Seit heute Morgen ist der Produktionsserver nicht erreichbar. Alle Dienste sind ausgefallen.')">
+                                    🇩🇪 German
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Milestone indicators -->
+                        <div class="milestone-bar">
+                            <div class="ms-step active">
+                                <div class="ms-num">1</div>
+                                <div class="ms-lbl">MVR</div>
+                            </div>
+                            <div class="ms-step active">
+                                <div class="ms-num">2</div>
+                                <div class="ms-lbl">Queue</div>
+                            </div>
+                            <div class="ms-step active">
+                                <div class="ms-num">3</div>
+                                <div class="ms-lbl">Orch.</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ROUTING RESULT -->
+                <div class="card">
+                    <div class="card-head">
+                        <span class="card-title">Routing Result</span>
+                        <span class="card-badge badge-muted" id="resultModelBadge">awaiting</span>
+                    </div>
+                    <div class="card-body" id="resultPanel">
+                        <div class="result-empty">
+                            <div class="result-empty-icon">🎯</div>
+                            <div class="result-empty-text">Submit a ticket to see<br>AI routing in action</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── BOTTOM GRID ── CATEGORY · AGENTS · INCIDENTS ──────────────── -->
+            <div class="bottom-grid">
+
+                <!-- CATEGORY DISTRIBUTION -->
+                <div class="card">
+                    <div class="card-head">
+                        <span class="card-title">Category Distribution</span>
+                        <span class="card-badge badge-muted" id="catTotalBadge">0 total</span>
+                    </div>
+                    <div class="card-body">
+                        <!-- SVG Donut -->
+                        <div class="donut-wrap">
+                            <svg id="donutSvg" width="130" height="130" viewBox="0 0 130 130">
+                                <circle id="donutBg" cx="65" cy="65" r="50" fill="none" stroke="var(--s3)"
+                                    stroke-width="18" />
+                                <circle id="donutBilling" cx="65" cy="65" r="50" fill="none" stroke="var(--amber)"
+                                    stroke-width="18" stroke-dasharray="0 314" stroke-dashoffset="0"
+                                    transform="rotate(-90 65 65)" style="transition:stroke-dasharray 0.8s" />
+                                <circle id="donutLegal" cx="65" cy="65" r="50" fill="none" stroke="var(--violet)"
+                                    stroke-width="18" stroke-dasharray="0 314" stroke-dashoffset="0"
+                                    transform="rotate(-90 65 65)" style="transition:stroke-dasharray 0.8s" />
+                                <circle id="donutTechnical" cx="65" cy="65" r="50" fill="none" stroke="var(--cyan)"
+                                    stroke-width="18" stroke-dasharray="0 314" stroke-dashoffset="0"
+                                    transform="rotate(-90 65 65)" style="transition:stroke-dasharray 0.8s" />
+                            </svg>
+                            <div class="donut-center">
+                                <div class="donut-center-val" id="donutTotal">0</div>
+                                <div class="donut-center-lbl">Total</div>
+                            </div>
+                        </div>
+                        <!-- Bars -->
+                        <div class="cat-bar-group">
+                            <div class="cat-bar-head">
+                                <span class="cat-bar-name">
+                                    <span class="cat-dot" style="background:var(--cyan)"></span>Technical
+                                </span>
+                                <span class="cat-bar-count" id="catTech">0</span>
+                            </div>
+                            <div class="cat-bar-track">
+                                <div class="cat-bar-fill fill-cyan" id="barTech" style="width:0%"></div>
+                            </div>
+                        </div>
+                        <div class="cat-bar-group">
+                            <div class="cat-bar-head">
+                                <span class="cat-bar-name">
+                                    <span class="cat-dot" style="background:var(--violet)"></span>Legal
+                                </span>
+                                <span class="cat-bar-count" id="catLegal">0</span>
+                            </div>
+                            <div class="cat-bar-track">
+                                <div class="cat-bar-fill fill-violet" id="barLegal" style="width:0%"></div>
+                            </div>
+                        </div>
+                        <div class="cat-bar-group">
+                            <div class="cat-bar-head">
+                                <span class="cat-bar-name">
+                                    <span class="cat-dot" style="background:var(--amber)"></span>Billing
+                                </span>
+                                <span class="cat-bar-count" id="catBilling">0</span>
+                            </div>
+                            <div class="cat-bar-track">
+                                <div class="cat-bar-fill fill-amber" id="barBilling" style="width:0%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- AGENT LOAD -->
+                <div class="card">
+                    <div class="card-head">
+                        <span class="card-title">Agent Load</span>
+                        <span class="card-badge badge-green"><span class="live-dot"
+                                style="width:5px;height:5px;"></span> Live</span>
+                    </div>
+                    <div class="card-body" id="agentPanel">
+                        <div class="agent-row">
+                            <div class="agent-av-sm av-A">A</div>
+                            <div class="agent-info">
+                                <div class="agent-row-name">Agent_A</div>
+                                <div class="agent-skills-mini">
+                                    <span class="skill-chip chip-tech">Tech 90%</span>
+                                    <span class="skill-chip chip-billing">Billing 10%</span>
+                                </div>
+                            </div>
+                            <div class="agent-load-bar">
+                                <div class="load-track">
+                                    <div class="load-fill fill-cyan" id="loadA" style="width:0%"></div>
+                                </div>
+                                <div class="load-pct" id="loadAText">0/5</div>
+                            </div>
+                        </div>
+                        <div class="agent-row">
+                            <div class="agent-av-sm av-B">B</div>
+                            <div class="agent-info">
+                                <div class="agent-row-name">Agent_B</div>
+                                <div class="agent-skills-mini">
+                                    <span class="skill-chip chip-billing">Billing 80%</span>
+                                    <span class="skill-chip chip-legal">Legal 20%</span>
+                                </div>
+                            </div>
+                            <div class="agent-load-bar">
+                                <div class="load-track">
+                                    <div class="load-fill fill-amber" id="loadB" style="width:0%"></div>
+                                </div>
+                                <div class="load-pct" id="loadBText">0/5</div>
+                            </div>
+                        </div>
+                        <div class="agent-row">
+                            <div class="agent-av-sm av-C">C</div>
+                            <div class="agent-info">
+                                <div class="agent-row-name">Agent_C</div>
+                                <div class="agent-skills-mini">
+                                    <span class="skill-chip chip-legal">Legal 70%</span>
+                                    <span class="skill-chip chip-tech">Tech 20%</span>
+                                </div>
+                            </div>
+                            <div class="agent-load-bar">
+                                <div class="load-track">
+                                    <div class="load-fill fill-violet" id="loadC" style="width:0%"></div>
+                                </div>
+                                <div class="load-pct" id="loadCText">0/5</div>
+                            </div>
+                        </div>
+                        <div class="agent-row">
+                            <div class="agent-av-sm av-D">D</div>
+                            <div class="agent-info">
+                                <div class="agent-row-name">Agent_D</div>
+                                <div class="agent-skills-mini">
+                                    <span class="skill-chip chip-tech">Tech 50%</span>
+                                    <span class="skill-chip chip-billing">Billing 30%</span>
+                                </div>
+                            </div>
+                            <div class="agent-load-bar">
+                                <div class="load-track">
+                                    <div class="load-fill" id="loadD"
+                                        style="background:linear-gradient(90deg,var(--green),rgba(16,245,160,0.5));transition:width 0.6s ease;width:0%;height:100%;border-radius:999px;">
+                                    </div>
+                                </div>
+                                <div class="load-pct" id="loadDText">0/5</div>
+                            </div>
+                        </div>
+                        <!-- Circuit breaker status -->
+                        <div
+                            style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
+                            <div style="font-family:var(--font-mono);font-size:0.63rem;color:var(--muted);">Circuit
+                                Breaker</div>
+                            <div style="font-family:var(--font-mono);font-size:0.63rem;" id="cbStatusText">—</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- INCIDENTS + HISTORY -->
+                <div class="card" style="display:flex;flex-direction:column;">
+                    <div class="card-head">
+                        <span class="card-title">Master Incidents</span>
+                        <span class="card-badge badge-muted" id="incidentCountBadge">0</span>
+                    </div>
+                    <div class="card-body" id="incidentPanel" style="flex:1;overflow-y:auto;max-height:200px;">
+                        <div class="incident-empty">
+                            <div class="incident-empty-icon">🛡</div>
+                            <div class="incident-empty-text">No incidents detected</div>
+                        </div>
+                    </div>
+
+                    <div class="card-head" style="border-top:1px solid var(--border);">
+                        <span class="card-title">Routing History</span>
+                        <span class="card-badge badge-cyan" id="histBadge">0 routed</span>
+                    </div>
+                    <div class="history-list" id="historyList" style="padding:4px 20px 12px;">
+                        <div
+                            style="display:flex;align-items:center;justify-content:center;padding:24px 0;font-family:var(--font-mono);font-size:0.67rem;color:var(--subtle);text-transform:uppercase;letter-spacing:0.1em;">
+                            No history yet
+                        </div>
+                    </div>
+                </div>
+
+            </div><!-- end bottom-grid -->
+
+        </div><!-- end page-wrap -->
+
+        <!-- Toast container -->
+        <div class="toast-container" id="toastContainer"></div>
+
+        <script>
+            /* ────────────────────────────────────────────────────────────────────
+               SMART-SUPPORT DASHBOARD  —  Vanilla JS
+            ──────────────────────────────────────────────────────────────────── */
+
+            const API = 'http://localhost:8000';
+            let selectedModel = 'logreg';
+            let currentJobId = null;
+            let jobPollTimer = null;
+            let statsHistory = [];
+            let routingHistory = [];
+
+            /* ── CANVAS BACKGROUND ─────────────────────────────────────────── */
+            ( function initCanvas ()
+            {
+                const canvas = document.getElementById( 'bgCanvas' );
+                const ctx = canvas.getContext( '2d' );
+                let W, H, particles = [];
+
+                function resize ()
+                {
+                    W = canvas.width = window.innerWidth;
+                    H = canvas.height = window.innerHeight;
+                }
+                resize();
+                window.addEventListener( 'resize', resize );
+
+                for ( let i = 0; i < 60; i++ )
+                {
+                    particles.push( {
+                        x: Math.random() * 1500,
+                        y: Math.random() * 900,
+                        r: Math.random() * 1.2 + 0.3,
+                        dx: ( Math.random() - 0.5 ) * 0.25,
+                        dy: -Math.random() * 0.4 - 0.1,
+                        alpha: Math.random() * 0.5 + 0.15,
+                    } );
+                }
+
+                function draw ()
+                {
+                    ctx.clearRect( 0, 0, W, H );
+                    particles.forEach( p =>
+                    {
+                        ctx.beginPath();
+                        ctx.arc( p.x, p.y, p.r, 0, Math.PI * 2 );
+                        ctx.fillStyle = `rgba(0,217,255,${ p.alpha })`;
+                        ctx.fill();
+                        p.x += p.dx; p.y += p.dy;
+                        if ( p.y < -5 ) { p.y = H + 5; p.x = Math.random() * W; }
+                    } );
+                    requestAnimationFrame( draw );
+                }
+                draw();
+            } )();
+
+            /* ── ANIMATED COUNTER ──────────────────────────────────────────── */
+            function animCount ( el, target )
+            {
+                const from = parseInt( el.textContent ) || 0;
+                if ( from === target ) return;
+                const dur = 450;
+                const start = performance.now();
+                const step = ( now ) =>
+                {
+                    const t = Math.min( ( now - start ) / dur, 1 );
+                    const val = Math.round( from + ( target - from ) * ( 1 - ( 1 - t ) ** 3 ) );
+                    el.textContent = val.toLocaleString();
+                    if ( t < 1 ) requestAnimationFrame( step );
+                    else { el.textContent = target.toLocaleString(); el.classList.add( 'num-pop' ); setTimeout( () => el.classList.remove( 'num-pop' ), 300 ); }
+                };
+                requestAnimationFrame( step );
+            }
+
+            /* ── TOAST ─────────────────────────────────────────────────────── */
+            function toast ( msg, type = 'error' )
+            {
+                const c = document.getElementById( 'toastContainer' );
+                const el = document.createElement( 'div' );
+                el.className = `toast ${ type }`;
+                el.textContent = msg;
+                c.appendChild( el );
+                setTimeout( () => el.remove(), 4000 );
+            }
+
+            /* ── MODEL SELECTION (display only — model set at server startup) ── */
+            function selectModel ( m )
+            {
+                selectedModel = m;
+                document.querySelectorAll( '.model-tab' ).forEach( t => t.classList.toggle( 'active', t.dataset.model === m ) );
+            }
+
+            /* ── QUICK FILL ────────────────────────────────────────────────── */
+            function fillExample ( subject, body )
+            {
+                document.getElementById( 'ticketSubject' ).value = subject;
+                document.getElementById( 'ticketBody' ).value = body;
+                document.getElementById( 'ticketSubject' ).focus();
+            }
+
+            /* ── URGENCY GAUGE ─────────────────────────────────────────────── */
+            function getGaugeColor ( s )
+            {
+                if ( s < 0.4 ) return '#10F5A0';
+                if ( s < 0.7 ) return '#F59E0B';
+                return '#F43F5E';
+            }
+
+            function buildResultHTML ( data )
+            {
+                const cat = data.category || '—';
+                const urgency = data.urgency || '—';
+                const score = parseFloat( data.urgency_score ) || 0;
+                const model = data.model_used || '—';
+                const agent = data.agent || null;
+                const dedup = data.dedup || null;
+
+                // gauge arc
+                const R = 48, CX = 80, CY = 80;
+                const angle = score * Math.PI; // 0..π  (left to right semicircle)
+                const startAngle = Math.PI;    // starts from 9 o'clock
+                const endAngle = Math.PI + score * Math.PI;
+                const x1 = CX + R * Math.cos( startAngle ), y1 = CY + R * Math.sin( startAngle );
+                const x2 = CX + R * Math.cos( endAngle ), y2 = CY + R * Math.sin( endAngle );
+                const largeArc = score > 0.5 ? 1 : 0;
+                const gaugeColor = getGaugeColor( score );
+
+                const pathFg = score === 0 ? '' :
+                    `<path d="M ${ x1 } ${ y1 } A ${ R } ${ R } 0 ${ largeArc } 1 ${ x2 } ${ y2 }"
+       fill="none" stroke="${ gaugeColor }" stroke-width="8" stroke-linecap="round"/>`;
+
+                const gaugeHTML = `
+    <div class="urgency-gauge-wrap">
+      <div class="gauge-label">Urgency Score</div>
+      <svg class="gauge-svg" width="160" height="90" viewBox="0 0 160 90">
+        <defs>
+          <linearGradient id="gaugeGrad" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%"   stop-color="#10F5A0"/>
+            <stop offset="60%"  stop-color="#F59E0B"/>
+            <stop offset="100%" stop-color="#F43F5E"/>
+          </linearGradient>
+        </defs>
+        <path d="M 32 80 A 48 48 0 0 1 128 80"
+          fill="none" stroke="var(--s3)" stroke-width="8" stroke-linecap="round"/>
+        ${ pathFg }
+        <text x="80" y="88" text-anchor="middle"
+          font-family="JetBrains Mono,monospace" font-size="7" fill="var(--muted)">
+          0                 0.5                 1
+        </text>
+      </svg>
+      <div class="gauge-score" style="color:${ gaugeColor }">${ score.toFixed( 3 ) }</div>
+      <div class="gauge-sublabel">S ∈ [0, 1]  ·  threshold&nbsp;0.8</div>
+    </div>`;
+
+                const urgencyClass = urgency.includes( 'HIGH' ) ? 'urgent-high' : 'urgent-normal';
+
+                const deduHTML = dedup ? `
+    <div class="dedup-status ${ dedup.is_duplicate ? 'dedup-dup' : 'dedup-unique' }">
+      <span class="dedup-icon">${ dedup.is_duplicate ? '⚠' : '✓' }</span>
+      ${ dedup.is_duplicate
+                        ? `Duplicate detected — similarity ${ ( dedup.similarity || 0 ).toFixed( 3 ) }`
+                        : `Unique ticket — similarity ${ ( dedup.similarity || 0 ).toFixed( 3 ) }` }
+    </div>` : '';
+
+                const agentHTML = agent ? `
+    <div class="agent-badge">
+      <div class="agent-avatar">${ agent.replace( 'Agent_', '' ) }</div>
+      <div>
+        <div class="agent-name">${ agent }</div>
+        <div class="agent-skill">Skill-based assignment</div>
+      </div>
+    </div>` : '';
+
+                return `<div class="result-content">
+    <span class="cat-tag ${ cat }">${ cat }</span>
+    ${ gaugeHTML }
+    <div class="result-grid">
+      <div class="result-field">
+        <div class="rf-label">Urgency Level</div>
+        <div class="rf-val ${ urgencyClass }">${ urgency }</div>
+      </div>
+      <div class="result-field">
+        <div class="rf-label">Model Used</div>
+        <div class="rf-val">${ model.toUpperCase() }</div>
+      </div>
+    </div>
+    ${ agentHTML }
+    ${ deduHTML }
+  </div>`;
+            }
+
+            /* ── ROUTE SYNC ────────────────────────────────────────────────── */
+            async function routeSync ()
+            {
+                const subject = document.getElementById( 'ticketSubject' ).value.trim();
+                const body = document.getElementById( 'ticketBody' ).value.trim();
+                if ( !subject || !body ) { toast( 'Please fill both Subject and Body', 'error' ); return; }
+
+                const btn = document.getElementById( 'btnSync' );
+                btn.innerHTML = '<span class="btn-spinner"></span>Routing…';
+                btn.disabled = true;
+                document.getElementById( 'formModeBadge' ).textContent = 'Sync';
+                document.getElementById( 'resultModelBadge' ).textContent = 'loading…';
+
+                try
+                {
+                    const resp = await fetch( `${ API }/route`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify( { subject, body } ),
+                    } );
+                    if ( !resp.ok ) throw new Error( ( await resp.json() ).detail || resp.statusText );
+                    const data = await resp.json();
+
+                    document.getElementById( 'resultPanel' ).innerHTML = buildResultHTML( data );
+                    document.getElementById( 'resultModelBadge' ).textContent = data.model_used.toUpperCase();
+                    addHistory( subject, data );
+                    toast( 'Ticket routed successfully', 'success' );
+                } catch ( e )
+                {
+                    toast( 'Route failed: ' + e.message );
+                    document.getElementById( 'resultPanel' ).innerHTML = `
+      <div class="result-empty">
+        <div class="result-empty-icon">⚠</div>
+        <div class="result-empty-text">${ e.message }</div>
+      </div>`;
+                } finally
+                {
+                    btn.innerHTML = '⟁ Route Now';
+                    btn.disabled = false;
+                    refreshStats();
+                    refreshAgents();
+                }
+            }
+
+            /* ── ROUTE ASYNC ───────────────────────────────────────────────── */
+            async function routeAsync ()
+            {
+                const subject = document.getElementById( 'ticketSubject' ).value.trim();
+                const body = document.getElementById( 'ticketBody' ).value.trim();
+                if ( !subject || !body ) { toast( 'Please fill both Subject and Body', 'error' ); return; }
+
+                const btn = document.getElementById( 'btnAsync' );
+                btn.innerHTML = '<span class="btn-spinner"></span>Queuing…';
+                btn.disabled = true;
+                document.getElementById( 'formModeBadge' ).textContent = 'Async 202';
+
+                try
+                {
+                    const resp = await fetch( `${ API }/route/async`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify( { subject, body } ),
+                    } );
+                    if ( !resp.ok ) throw new Error( ( await resp.json() ).detail || resp.statusText );
+                    const data = await resp.json();
+
+                    currentJobId = data.job_id;
+                    showJobTracker( data.job_id, 'pending' );
+                    toast( `Job accepted — polling for result`, 'info' );
+                    startJobPolling( subject, currentJobId );
+                } catch ( e )
+                {
+                    toast( 'Async route failed: ' + e.message );
+                } finally
+                {
+                    btn.innerHTML = '⌁ Async (202)';
+                    btn.disabled = false;
+                }
+            }
+
+            function showJobTracker ( jobId, status )
+            {
+                const el = document.getElementById( 'jobTracker' );
+                el.classList.add( 'visible' );
+                document.getElementById( 'jobIdLabel' ).textContent = 'job: ' + jobId;
+                setJobBadge( status );
+            }
+
+            function setJobBadge ( status )
+            {
+                const b = document.getElementById( 'jobStatusBadge' );
+                b.textContent = status.toUpperCase();
+                b.className = 'job-status-badge js-' + status;
+            }
+
+            function startJobPolling ( subject, jobId )
+            {
+                if ( jobPollTimer ) clearInterval( jobPollTimer );
+                let attempts = 0;
+                jobPollTimer = setInterval( async () =>
+                {
+                    attempts++;
+                    if ( attempts > 30 ) { clearInterval( jobPollTimer ); setJobBadge( 'failed' ); return; }
+                    try
+                    {
+                        const resp = await fetch( `${ API }/route/async/${ jobId }` );
+                        if ( !resp.ok ) return;
+                        const job = await resp.json();
+                        setJobBadge( job.status );
+
+                        if ( job.status === 'done' && job.result )
+                        {
+                            clearInterval( jobPollTimer );
+                            document.getElementById( 'resultPanel' ).innerHTML = buildResultHTML( job.result );
+                            document.getElementById( 'resultModelBadge' ).textContent = job.result.model_used?.toUpperCase() || '—';
+                            document.getElementById( 'jobResultPreview' ).textContent =
+                                `✓ Completed · category: ${ job.result.category }`;
+                            addHistory( subject, job.result );
+                            refreshStats();
+                            refreshAgents();
+                        } else if ( job.status === 'processing' )
+                        {
+                            document.getElementById( 'jobResultPreview' ).textContent = 'Processing…';
+                        }
+                    } catch ( _ ) { }
+                }, 800 );
+            }
+
+            /* ── ROUTING HISTORY ───────────────────────────────────────────── */
+            function addHistory ( subject, result )
+            {
+                routingHistory.unshift( { subject, result } );
+                if ( routingHistory.length > 50 ) routingHistory.pop();
+                renderHistory();
+                document.getElementById( 'histBadge' ).textContent = routingHistory.length + ' routed';
+            }
+
+            function catColor ( cat )
+            {
+                return cat === 'Technical' ? 'var(--cyan)'
+                    : cat === 'Legal' ? 'var(--violet)'
+                        : 'var(--amber)';
+            }
+
+            function renderHistory ()
+            {
+                const list = document.getElementById( 'historyList' );
+                list.innerHTML = routingHistory.slice( 0, 15 ).map( h =>
+                {
+                    const score = parseFloat( h.result.urgency_score || 0 ).toFixed( 2 );
+                    const color = catColor( h.result.category );
+                    const catShort = h.result.category;
+                    return `<div class="history-item">
+      <div class="h-cat-dot" style="background:${ color }"></div>
+      <div class="h-subject">${ h.subject }</div>
+      <div class="h-cat" style="background:${ color }20;color:${ color };">${ catShort }</div>
+      <div class="h-score">S=${ score }</div>
+    </div>`;
+                } ).join( '' ) || '<div style="font-family:var(--font-mono);font-size:0.67rem;color:var(--subtle);padding:20px 0;text-align:center;">No history yet</div>';
+            }
+
+            /* ── STATS REFRESH ─────────────────────────────────────────────── */
+            async function refreshStats ()
+            {
+                try
+                {
+                    const resp = await fetch( `${ API }/stats` );
+                    if ( !resp.ok ) return;
+                    const s = await resp.json();
+
+                    animCount( document.getElementById( 'statTotal' ), s.tickets_routed || 0 );
+                    animCount( document.getElementById( 'statUrgent' ), s.urgent_count || 0 );
+                    animCount( document.getElementById( 'statWebhook' ), s.webhook_fires || 0 );
+                    animCount( document.getElementById( 'statIncidents' ), s.master_incidents || 0 );
+                    document.getElementById( 'incidentCountBadge' ).textContent = s.master_incidents || 0;
+
+                    // category bars + donut
+                    const cc = s.category_counts || {};
+                    const total = Object.values( cc ).reduce( ( a, b ) => a + b, 0 );
+                    document.getElementById( 'catTotalBadge' ).textContent = total + ' total';
+                    document.getElementById( 'donutTotal' ).textContent = total;
+                    animCount( document.getElementById( 'catTech' ), cc.Technical || 0 );
+                    animCount( document.getElementById( 'catLegal' ), cc.Legal || 0 );
+                    animCount( document.getElementById( 'catBilling' ), cc.Billing || 0 );
+
+                    const pct = ( v ) => total > 0 ? ( ( v / total ) * 100 ).toFixed( 1 ) + '%' : '0%';
+                    document.getElementById( 'barTech' ).style.width = pct( cc.Technical || 0 );
+                    document.getElementById( 'barLegal' ).style.width = pct( cc.Legal || 0 );
+                    document.getElementById( 'barBilling' ).style.width = pct( cc.Billing || 0 );
+
+                    updateDonut( cc, total );
+                    statsHistory.push( { t: Date.now(), val: total } );
+                } catch ( _ ) { }
+            }
+
+            function updateDonut ( cc, total )
+            {
+                const C = 2 * Math.PI * 50;
+                const vals = [
+                    { id: 'donutBilling', v: cc.Billing || 0 },
+                    { id: 'donutLegal', v: cc.Legal || 0 },
+                    { id: 'donutTechnical', v: cc.Technical || 0 },
+                ];
+                let offset = 0;
+                vals.forEach( ( { id, v } ) =>
+                {
+                    const el = document.getElementById( id );
+                    const share = total > 0 ? ( v / total ) * C : 0;
+                    el.setAttribute( 'stroke-dasharray', `${ share } ${ C - share }` );
+                    el.setAttribute( 'stroke-dashoffset', -( offset ) );
+                    offset += share;
+                } );
+            }
+
+            /* ── AGENTS REFRESH ────────────────────────────────────────────── */
+            async function refreshAgents ()
+            {
+                try
+                {
+                    const resp = await fetch( `${ API }/agents` );
+                    if ( !resp.ok ) return;
+                    const data = await resp.json();
+                    const agents = data.agents || {};
+
+                    [ 'A', 'B', 'C', 'D' ].forEach( letter =>
+                    {
+                        const key = `Agent_${ letter }`;
+                        const info = agents[ key ];
+                        if ( !info ) return;
+                        const load = info.load || info.current_load || 0;
+                        const cap = info.capacity || 5;
+                        const util = info.utilisation || info.utilization || 0;
+                        const pct = Math.round( util * 100 );
+                        document.getElementById( `load${ letter }` ).style.width = pct + '%';
+                        document.getElementById( `load${ letter }Text` ).textContent = `${ load }/${ cap }`;
+                    } );
+                } catch ( _ ) { }
+            }
+
+            /* ── INCIDENTS REFRESH ─────────────────────────────────────────── */
+            async function refreshIncidents ()
+            {
+                try
+                {
+                    const resp = await fetch( `${ API }/incidents` );
+                    if ( !resp.ok ) return;
+                    const data = await resp.json();
+                    const list = data.incidents || [];
+
+                    const panel = document.getElementById( 'incidentPanel' );
+                    if ( list.length === 0 )
+                    {
+                        panel.innerHTML = `
+        <div class="incident-empty">
+          <div class="incident-empty-icon">🛡</div>
+          <div class="incident-empty-text">No incidents detected</div>
+        </div>`;
+                    } else
+                    {
+                        panel.innerHTML = list.map( i => `
+        <div class="incident-card">
+          <div class="incident-id">⚠ MASTER-${ i.incident_id.slice( -8 ).toUpperCase() }</div>
+          <div class="incident-text">${ i.representative_text || '—' }</div>
+          <div class="incident-meta">${ i.ticket_count } tickets merged · ${ formatTime( i.created_at ) }</div>
+        </div>`).join( '' );
+                    }
+                    animCount( document.getElementById( 'statIncidents' ), list.length );
+                } catch ( _ ) { }
+            }
+
+            function formatTime ( iso )
+            {
+                if ( !iso ) return '—';
+                try { return new Date( iso ).toLocaleTimeString(); } catch { return iso; }
+            }
+
+            /* ── HEALTH POLL ───────────────────────────────────────────────── */
+            async function checkHealth ()
+            {
+                const dot = document.getElementById( 'connDot' );
+                const label = document.getElementById( 'connLabel' );
+                const text = document.getElementById( 'connText' );
+                const uptime = document.getElementById( 'uptimeLabel' );
+                const mp = document.getElementById( 'modelPill' );
+                const cb = document.getElementById( 'cbStatusText' );
+
+                dot.className = 'conn-dot checking';
+                try
+                {
+                    const resp = await fetch( `${ API }/health`, { signal: AbortSignal.timeout( 4000 ) } );
+                    if ( !resp.ok ) throw new Error( resp.statusText );
+                    const h = await resp.json();
+
+                    dot.className = 'conn-dot ok';
+                    label.textContent = 'LIVE';
+                    text.textContent = 'API OK';
+                    mp.textContent = 'Model: ' + ( h.model_variant || '—' ).toUpperCase();
+                    uptime.textContent = formatUptime( h.uptime_seconds || 0 );
+                    // Sync model tabs with active server model
+                    if ( h.model_variant ) selectModel( h.model_variant );
+
+                    const cbState = h.circuit_breaker || 'N/A';
+                    cb.textContent = cbState;
+                    cb.style.color = cbState === 'OPEN' ? 'var(--rose)' :
+                        cbState === 'HALF_OPEN' ? 'var(--amber)' :
+                            cbState === 'CLOSED' ? 'var(--green)' : 'var(--muted)';
+                } catch ( e )
+                {
+                    dot.className = 'conn-dot err';
+                    label.textContent = 'OFFLINE';
+                    text.textContent = 'API Down';
+                    uptime.textContent = '—';
+                    if ( e.name !== 'TimeoutError' ) console.warn( 'Health check failed:', e.message );
+                }
+            }
+
+            function formatUptime ( s )
+            {
+                const h = Math.floor( s / 3600 ), m = Math.floor( ( s % 3600 ) / 60 ), ss = Math.floor( s % 60 );
+                if ( h > 0 ) return `${ h }h ${ m }m`;
+                if ( m > 0 ) return `${ m }m ${ ss }s`;
+                return `${ ss }s`;
+            }
+
+            /* ── KEYBOARD SHORTCUT ─────────────────────────────────────────── */
+            document.addEventListener( 'keydown', e =>
+            {
+                if ( ( e.ctrlKey || e.metaKey ) && e.key === 'Enter' ) routeSync();
+            } );
+
+            /* ── INIT & INTERVALS ──────────────────────────────────────────── */
+            async function init ()
+            {
+                await checkHealth();
+                await refreshStats();
+                await refreshAgents();
+                await refreshIncidents();
+            }
+
+            init();
+            setInterval( checkHealth, 5000 );
+            setInterval( refreshStats, 3000 );
+            setInterval( refreshAgents, 4000 );
+            setInterval( refreshIncidents, 7000 );
+        </script>
+    </body>
+
+</html>

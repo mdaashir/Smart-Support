@@ -4,10 +4,10 @@ import pytest
 import pandas as pd
 from sklearn.model_selection import train_test_split, StratifiedKFold, cross_val_score
 
-from src.config import CATEGORIES
-from src.models.tfidf_logreg import TfidfLogRegClassifier
-from src.routing.urgency import detect_urgency, PRIORITY_HIGH, PRIORITY_NORMAL
-from src.routing.queue import TicketQueue
+from backend.config import CATEGORIES
+from backend.models.tfidf_logreg import TfidfLogRegClassifier
+from backend.routing.urgency import detect_urgency, PRIORITY_HIGH, PRIORITY_NORMAL
+from backend.routing.queue import TicketQueue
 
 
 # ── Fixtures ─────────────────────────────────────────────────────────────
@@ -15,7 +15,7 @@ from src.routing.queue import TicketQueue
 @pytest.fixture(scope="module")
 def real_data():
     """Load a small slice of the real dataset for fast tests."""
-    from src.data.dataset_loader import load_dataset
+    from backend.data.dataset_loader import load_dataset
     df = load_dataset()
     # Take a stratified 5 % sample for speed
     _, sample = train_test_split(

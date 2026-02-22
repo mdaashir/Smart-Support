@@ -3,15 +3,15 @@
 import pytest
 from sklearn.model_selection import train_test_split
 
-from src.config import CATEGORIES
-from src.models.tfidf_svc import TfidfSVCClassifier
-from src.routing.router import route_ticket
-from src.routing.urgency_regressor import UrgencyRegressor
+from backend.config import CATEGORIES
+from backend.models.tfidf_svc import TfidfSVCClassifier
+from backend.routing.router import route_ticket
+from backend.routing.urgency_regressor import UrgencyRegressor
 
 
 @pytest.fixture(scope="module")
 def svc_artifacts():
-    from src.data.dataset_loader import load_dataset
+    from backend.data.dataset_loader import load_dataset
     df = load_dataset()
     # 5 % stratified sample for speed
     _, sample = train_test_split(

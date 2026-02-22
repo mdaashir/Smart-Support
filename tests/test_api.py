@@ -7,7 +7,7 @@ from fastapi.testclient import TestClient
 # Force lightweight model for tests
 os.environ["MODEL_VARIANT"] = "logreg"
 
-from api.main import app  # noqa: E402
+from backend.api.main import app  # noqa: E402
 
 
 @pytest.fixture(scope="module")

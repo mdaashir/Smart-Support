@@ -7,8 +7,8 @@ to keep the test suite fast without GPU.
 import pytest
 import numpy as np
 
-from src.config import CATEGORIES
-from src.models.distilbert_classifier import DistilBertEmbedder, DistilBertTicketClassifier
+from backend.config import CATEGORIES
+from backend.models.distilbert_classifier import DistilBertEmbedder, DistilBertTicketClassifier
 
 
 # ── Embedder tests ───────────────────────────────────────────────────────
