@@ -33,5 +33,5 @@ dev = [
 ]
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
+testpaths = ["backend/tests"]
 asyncio_mode = "auto"

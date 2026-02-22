@@ -3,10 +3,11 @@
 from pathlib import Path
 
 # ── Paths ────────────────────────────────────────────────────────────────
-ROOT_DIR = Path(__file__).resolve().parent.parent
-DATA_DIR = ROOT_DIR / "data"
-MODEL_DIR = ROOT_DIR / "saved_models"
-EVAL_DIR = ROOT_DIR / "evaluation" / "artifacts"
+_BACKEND_DIR = Path(__file__).resolve().parent
+ROOT_DIR = _BACKEND_DIR.parent
+DATA_DIR = _BACKEND_DIR / "data"
+MODEL_DIR = _BACKEND_DIR / "saved_models"
+EVAL_DIR = _BACKEND_DIR / "evaluation" / "artifacts"
 
 # ── Real dataset (HuggingFace open-source) ───────────────────────────────
 HF_DATASET_ID = "Tobi-Bueck/customer-support-tickets"
