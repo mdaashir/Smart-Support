@@ -1,4 +1,9 @@
-"""Milestone 2 -- Multilingual TF-IDF (word + char n-grams) + LinearSVC classifier."""
+"""Enhanced classical classifier: Multilingual TF-IDF (word + char n-grams) + LinearSVC.
+
+Provides a fast, high-accuracy alternative to the Transformer-based M2
+model.  Useful for latency-sensitive deployments and as a circuit-breaker
+fallback for the heavier DistilBERT pipeline.
+"""
 
 from __future__ import annotations
 

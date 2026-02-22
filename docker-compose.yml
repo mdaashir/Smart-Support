@@ -15,7 +15,19 @@
 
 services:
 
-  # ── FastAPI backend ────────────────────────────────────────────────────────
+  # ── Redis message broker (Milestone 2) ─────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    restart: unless-stopped
+
+  # ── FastAPI backend ─────────────────────────────────────────────────────────────
   backend:
     build:
       context: .
@@ -24,6 +36,10 @@ services:
       - "8000:8000"
     environment:
       - MODEL_VARIANT=${MODEL_VARIANT:-svc}
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      redis:
+        condition: service_healthy
     volumes:
       # Mount trained models and dataset from host (read-only at runtime)
       - ./backend/saved_models:/app/backend/saved_models:ro

@@ -1,4 +1,9 @@
-"""Milestone 3 — DistilBERT embeddings + Logistic Regression classifier."""
+"""Milestone 2 — Transformer-based classifier: DistilBERT embeddings + Logistic Regression head.
+
+Replaces the baseline TF-IDF + LogReg (M1) with a pretrained multilingual
+Transformer that produces contextual 768-d embeddings.  A lightweight
+Logistic Regression head maps embeddings to the three ticket categories.
+"""
 
 from __future__ import annotations
 

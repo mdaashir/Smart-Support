@@ -175,9 +175,9 @@ async def lifespan(app: FastAPI):
     # M2: urgency regressor
     _state["urgency_regressor"] = _load_urgency_regressor()
 
-    # M2: async broker
-    from backend.routing.broker import AsyncBroker
-    broker = AsyncBroker()
+    # M2: async broker (Redis-backed with in-memory fallback)
+    from backend.routing.redis_broker import RedisBroker
+    broker = RedisBroker()
     _state["broker"] = broker
 
     async def _process_ticket(subject: str, body: str) -> dict:
@@ -355,7 +355,7 @@ async def get_job_status(job_id: str):
     broker = _state.get("broker")
     if broker is None:
         raise HTTPException(status_code=503, detail="Broker not initialised")
-    job = broker.get_result(job_id)
+    job = await broker.get_result(job_id)
     if job is None:
         raise HTTPException(status_code=404, detail="Job not found")
     return JobStatusResponse(

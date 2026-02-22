@@ -6,10 +6,13 @@ Usage
     # Milestone 1: real data + LogReg  (cross-validated)
     python -m scripts.train --milestone 1
 
-    # Milestone 2: real data + LinearSVC + urgency regressor
+    # Milestone 2: real data + DistilBERT (Transformer) + urgency regressor
     python -m scripts.train --milestone 2
 
-    # Milestone 3: real data + DistilBERT
+    # Milestone 2-alt: real data + LinearSVC (fast classical fallback)
+    python -m scripts.train --milestone 2alt
+
+    # Milestone 3: system features (uses M2 model) + full eval
     python -m scripts.train --milestone 3
 
     # All milestones at once
@@ -85,55 +88,16 @@ def train_milestone_1():
     return metrics
 
 
-# ─── Milestone 2 — Real Data + LinearSVC + Urgency Regressor ────────────
+# ─── Milestone 2 — Transformer (DistilBERT) + Urgency Regressor ─────────
 
 def train_milestone_2():
-    from backend.config import MODEL_DIR
-    from backend.data.dataset_loader import load_dataset, split_dataset
-    from backend.models.tfidf_svc import TfidfSVCClassifier
-    from backend.routing.urgency_regressor import UrgencyRegressor
-    from backend.evaluation.evaluator import evaluate_and_save
-
-    logger.info("=== Milestone 2: Real Data + LinearSVC + Urgency ===")
-    df = load_dataset()
-    X_tr, X_te, y_tr, y_te = split_dataset(df)
-
-    # ── Classification ───────────────────────────────────────────────
-    clf = TfidfSVCClassifier()
-    with _timer("SVC training"):
-        clf.fit(X_tr, y_tr)
-
-    metrics = clf.evaluate(X_te, y_te)
-    evaluate_and_save(y_te, clf.predict(X_te), model_name="tfidf_svc")
-    clf.save(MODEL_DIR / "tfidf_svc.joblib")
-    logger.info("Milestone 2 classification accuracy: %.4f", metrics["accuracy"])
-
-    # ── Urgency regressor ────────────────────────────────────────────
-    if "priority_num" in df.columns:
-        logger.info("Training urgency regressor …")
-        train_df = df.loc[X_tr.index]
-        urg = UrgencyRegressor()
-        urg.fit(train_df["text"].tolist(), train_df["priority_num"].tolist())
-        urg.save(MODEL_DIR / "urgency_regressor.joblib")
-
-        # Quick sanity check
-        sample_scores = [urg.predict_score(t) for t in X_te.head(5)]
-        logger.info("Sample urgency scores: %s", [round(s, 3) for s in sample_scores])
-    else:
-        logger.warning("No priority_num column — skipping urgency regressor")
-
-    return metrics
-
-
-# ─── Milestone 3 — Real Data + DistilBERT ───────────────────────────────
-
-def train_milestone_3():
     from backend.config import DISTILBERT, MODEL_DIR
     from backend.data.dataset_loader import load_dataset, split_dataset
     from backend.models.distilbert_classifier import DistilBertTicketClassifier
+    from backend.routing.urgency_regressor import UrgencyRegressor
     from backend.evaluation.evaluator import evaluate_and_save
 
-    logger.info("=== Milestone 3: Real Data + DistilBERT (mean-pool) ===")
+    logger.info("=== Milestone 2: Real Data + DistilBERT (Transformer) + Urgency ===")
     df = load_dataset()
     X_tr, X_te, y_tr, y_te = split_dataset(df)
 
@@ -155,6 +119,7 @@ def train_milestone_3():
         )
         logger.info("Sub-sampled test set to %d for DistilBERT eval", max_test)
 
+    # ── Transformer classification ───────────────────────────────────
     clf = DistilBertTicketClassifier()
     with _timer("DistilBERT training"):
         clf.fit(X_tr.tolist(), y_tr)
@@ -162,8 +127,66 @@ def train_milestone_3():
     metrics = clf.evaluate(X_te.tolist(), y_te)
     evaluate_and_save(y_te, clf.predict(X_te.tolist()), model_name="distilbert")
     clf.save(MODEL_DIR / "distilbert_head.joblib")
-    logger.info("Milestone 3 accuracy: %.4f", metrics["accuracy"])
+    logger.info("Milestone 2 (Transformer) accuracy: %.4f", metrics["accuracy"])
+
+    # ── Urgency regressor ────────────────────────────────────────────
+    if "priority_num" in df.columns:
+        logger.info("Training urgency regressor ...")
+        train_df = df.loc[df.index.isin(X_tr.index)]
+        urg = UrgencyRegressor()
+        urg.fit(train_df["text"].tolist(), train_df["priority_num"].tolist())
+        urg.save(MODEL_DIR / "urgency_regressor.joblib")
+
+        sample_scores = [urg.predict_score(t) for t in X_te[:5].tolist()]
+        logger.info("Sample urgency scores: %s", [round(s, 3) for s in sample_scores])
+    else:
+        logger.warning("No priority_num column -- skipping urgency regressor")
+
     return metrics
+
+
+# ─── Milestone 2-alt — Fast Classical Fallback (LinearSVC) ───────────────
+
+def train_milestone_2alt():
+    from backend.config import MODEL_DIR
+    from backend.data.dataset_loader import load_dataset, split_dataset
+    from backend.models.tfidf_svc import TfidfSVCClassifier
+    from backend.evaluation.evaluator import evaluate_and_save
+
+    logger.info("=== Milestone 2-alt: Real Data + LinearSVC (fast fallback) ===")
+    df = load_dataset()
+    X_tr, X_te, y_tr, y_te = split_dataset(df)
+
+    clf = TfidfSVCClassifier()
+    with _timer("SVC training"):
+        clf.fit(X_tr, y_tr)
+
+    metrics = clf.evaluate(X_te, y_te)
+    evaluate_and_save(y_te, clf.predict(X_te), model_name="tfidf_svc")
+    clf.save(MODEL_DIR / "tfidf_svc.joblib")
+    logger.info("Milestone 2-alt (SVC) accuracy: %.4f", metrics["accuracy"])
+    return metrics
+
+
+# ─── Milestone 3 — Storm-Proof Engine (system features, full eval) ───────
+
+def train_milestone_3():
+    """M3 trains all models and the urgency regressor for full-system demo.
+
+    The Transformer model was already introduced in M2; M3 focuses on
+    system resilience (circuit breaker, dedup, skill routing) which
+    require both primary and fallback models to be available.
+    """
+    from backend.config import MODEL_DIR
+
+    logger.info("=== Milestone 3: Storm-Proof Engine (full model suite) ===")
+    # Train both models so circuit breaker has primary + fallback
+    m1 = train_milestone_1()
+    m2 = train_milestone_2()
+    train_milestone_2alt()  # SVC fallback for circuit breaker
+
+    logger.info("All models trained -- circuit breaker, dedup, skill routing ready")
+    return m2  # return Transformer metrics as the headline number
 
 
 # ─── CLI entry point ────────────────────────────────────────────────────
@@ -171,6 +194,7 @@ def train_milestone_3():
 MILESTONES = {
     "1": train_milestone_1,
     "2": train_milestone_2,
+    "2alt": train_milestone_2alt,
     "3": train_milestone_3,
 }
 
