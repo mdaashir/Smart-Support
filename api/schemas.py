@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Literal, Optional
+from typing import Any, Literal, Optional
 import uuid
 
 from pydantic import BaseModel, Field
@@ -32,9 +32,9 @@ class TicketOut(BaseModel):
 
 class TicketAccepted(BaseModel):
     """Async M2 response (202 Accepted) — returned immediately."""
-    ticket_id:  str
-    status:     Literal["accepted"] = "accepted"
-    message:    str = "Ticket queued for processing."
+    ticket_id:   str
+    status:      Literal["accepted"] = "accepted"
+    message:     str = "Ticket queued for processing."
     accepted_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
@@ -50,6 +50,8 @@ class TicketResult(BaseModel):
     category:      Optional[Literal["Billing", "Legal", "Technical"]] = None
     urgency_score: Optional[float] = Field(None, ge=0.0, le=1.0,
                                            description="Continuous score S ∈ [0,1]")
+    confidence:    Optional[float] = Field(None, ge=0.0, le=1.0,
+                                           description="Category prediction confidence")
     model_used:    Optional[str]   = None
     processed_at:  Optional[str]   = None
 
@@ -60,3 +62,9 @@ class QueueStatus(BaseModel):
     pending:   int
     processed: int
     message:   str = "ok"
+
+
+class ModelMetrics(BaseModel):
+    """Response model for GET /metrics."""
+    m1: Optional[dict[str, Any]] = None
+    m2: Optional[dict[str, Any]] = None

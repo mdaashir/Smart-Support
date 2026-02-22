@@ -46,6 +46,7 @@ load_dotenv()
 import models as ml_m1
 from api import queue_store
 from api.schemas import (
+    ModelMetrics,
     QueueStatus,
     TicketAccepted,
     TicketIn,
@@ -143,19 +144,35 @@ async def health_check() -> dict[str, Any]:
     redis_info: dict = {}
     if redis_ok:
         try:
-            pending   = await _redis_conn.llen("arq:queue")
+            # arq >= 0.25 uses a sorted set for its queue
+            try:
+                pending = await _redis_conn.zcard("arq:queue")
+            except Exception:
+                pending = await _redis_conn.llen("arq:queue")
             processed = await _redis_conn.zcard(_processed_set())
             redis_info = {"pending": pending, "processed": processed}
         except Exception:
             redis_info = {"error": "redis read failed"}
 
+    m1_met = ml_m1.get_metrics()
     return {
         "status":    "ok",
         "m1":        "ready",
         "m2_broker": "ready" if redis_ok else "unavailable (start Redis to enable)",
         "redis":     redis_info,
         "m1_queue":  queue_store.size(),
+        "m1_accuracy": m1_met["accuracy"] if m1_met else None,
     }
+
+
+@app.get("/metrics", response_model=ModelMetrics, tags=["System"])
+async def get_metrics() -> ModelMetrics:
+    """Return cached training / evaluation metrics for M1 and M2 models."""
+    import models_m2 as ml_m2
+    return ModelMetrics(
+        m1=ml_m1.get_metrics(),
+        m2=ml_m2.get_metrics(),
+    )
 
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -290,7 +307,14 @@ async def m2_next() -> dict:
 )
 async def m2_status() -> QueueStatus:
     _require_redis()
-    pending   = await _redis_conn.llen("arq:queue")
+    # arq ≥ 0.25 stores jobs in a sorted set "arq:queue"; fallback for older list
+    try:
+        pending = await _redis_conn.zcard("arq:queue")
+    except Exception:
+        try:
+            pending = await _redis_conn.llen("arq:queue")
+        except Exception:
+            pending = 0
     processed = await _redis_conn.zcard(_processed_set())
     return QueueStatus(pending=pending, processed=processed)
 
@@ -309,6 +333,7 @@ async def m2_get_ticket(ticket_id: str) -> TicketResult:
         return TicketResult(ticket_id=ticket_id, status="not_found")
 
     raw_score = data.get("urgency_score")
+    raw_conf  = data.get("confidence")
     return TicketResult(
         ticket_id=ticket_id,
         subject=data.get("subject"),
@@ -316,6 +341,7 @@ async def m2_get_ticket(ticket_id: str) -> TicketResult:
         status=data.get("status", "pending"),          # type: ignore[arg-type]
         category=data.get("category"),                  # type: ignore[arg-type]
         urgency_score=float(raw_score) if raw_score else None,
+        confidence=float(raw_conf) if raw_conf else None,
         model_used=data.get("model_used"),
         processed_at=data.get("processed_at"),
     )

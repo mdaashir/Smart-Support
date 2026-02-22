@@ -132,10 +132,17 @@ Navigate to **<http://localhost:8000/docs>** for interactive API documentation.
 
 ### M1 Model Details
 
-- **Vectorizer**: TF-IDF with character n-grams (3–5), max 20k features
-- **Classifier**: LinearSVC with balanced class weights
+- **Vectorizer**: TF-IDF with `char_wb` character n-grams (3–5), 50k features, `sublinear_tf=True`
+- **Classifier**: LinearSVC (`C=0.5`) with balanced class weights
 - **Urgency**: Regex heuristic — keywords like *asap*, *urgent*, *critical*, *broken*, *outage* → urgency=1 (HIGH), else urgency=5 (NORMAL)
-- **Accuracy**: **95.7%** on held-out test set
+- **Accuracy**: **90.1%** on 15% held-out eval set (4,289 samples)
+- **Weighted F1**: **89.6%**
+
+| Class | Precision | Recall | F1 |
+| --- | --- | --- | --- |
+| Billing | 0.775 | 0.634 | 0.697 |
+| Legal | 0.529 | 0.314 | 0.394 |
+| Technical | 0.924 | 0.963 | 0.943 |
 
 ### Category Mapping
 
@@ -184,11 +191,19 @@ curl http://localhost:8000/v1/tickets/next
 ### M2 Model Details
 
 - **Embeddings**: DistilBERT (`distilbert-base-uncased`) frozen [CLS] token embeddings (768-dim)
-- **Classifier**: Logistic Regression on embeddings → Billing / Legal / Technical
-- **Urgency Regressor**: Ridge regression → continuous score S ∈ [0, 1]
-  - Training labels: `low → 0.0`, `medium → 0.5`, `high → 1.0`
-- **Training**: 5,000-sample subset for CPU feasibility
-- **Metrics**: Category accuracy ≈ 0.605, Urgency RMSE ≈ 0.384
+- **Classifier**: LogisticRegression (`C=5`, `lbfgs`, `max_iter=2000`) → Billing / Legal / Technical
+- **Urgency Regressor**: Ridge regression (`alpha=0.5`) → continuous score S ∈ [0, 1]
+- **6-band urgency labels** (priority × keyword detection):
+
+  | Priority | No urgency keyword | Has urgency keyword |
+  | --- | --- | --- |
+  | low | 0.10 | 0.30 |
+  | medium | 0.45 | 0.65 |
+  | high | 0.80 | 1.00 |
+
+- **Training**: 9,600 stratified samples (12k × 80% split), test: 2,400 samples
+- **Confidence**: `predict_proba` on LogReg classifier exposed as `confidence` field
+- **Category accuracy**: **61.7%**  |  **Urgency RMSE**: 0.2683  |  **Urgency MAE**: 0.2247
 
 ### Async Architecture
 
@@ -245,7 +260,8 @@ curl http://localhost:8000/v2/tickets/<ticket_id>
   "body": "All servers down ASAP",
   "status": "processed",
   "category": "Technical",
-  "urgency_score": 0.9431,
+  "urgency_score": 0.834,
+  "confidence": 0.97,
   "model_used": "m2",
   "processed_at": "2026-02-21T15:00:25Z"
 }
@@ -260,9 +276,17 @@ curl http://localhost:8000/v2/tickets/next
 
 | Method | Path | Description |
 | --- | --- | --- |
-| `GET` | `/health` | Liveness probe — M1 status, Redis/M2 broker status, queue depths |
+| `GET` | `/health` | Liveness probe — M1 status, M1 accuracy, Redis/M2 broker status, queue depths |
+| `GET` | `/metrics` | Training/eval metrics for both M1 and M2 (accuracy, F1, RMSE, MAE) |
 | `GET` | `/docs` | Interactive Swagger UI |
 | `GET` | `/redoc` | ReDoc documentation |
+
+### Metrics Example
+
+```bash
+curl http://localhost:8000/metrics
+# Returns M1 accuracy + classification report + M2 accuracy + urgency RMSE/MAE
+```
 
 ---
 
@@ -292,6 +316,24 @@ The training dataset contains **28,587 multilingual support tickets** with 10 qu
 | Sales and Pre-Sales | 918 |
 | Human Resources | 576 |
 | General Inquiry | 405 |
+
+---
+
+## Running the Demo
+
+```bash
+# Start all services (see Quick Start above), then:
+uv run python demo.py
+```
+
+The interactive demo walks through all 7 steps:
+1. Health check (M1 accuracy, Redis status)
+2. Sync classification — POST /v1/tickets (4 sample tickets)
+3. Priority dequeue — GET /v1/tickets/next (urgent first)
+4. Async inference — POST /v2/tickets (202 + job IDs)
+5. Result polling — GET /v2/tickets/{id} (category + urgency + confidence)
+6. ZPOPMAX dequeue — GET /v2/tickets/next (highest urgency first)
+7. Model metrics — GET /metrics (accuracy, F1, RMSE, MAE)
 
 ---
 

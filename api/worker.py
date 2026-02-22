@@ -105,27 +105,34 @@ async def process_ticket(
                 result = {
                     "category":      m1["category"],
                     "urgency_score": 1.0 if m1["urgency_level"] == 1 else 0.3,
+                    "confidence":    None,
                 }
                 model_used = "m1-fallback"
 
         category      = result["category"]
         urgency_score = result["urgency_score"]
+        confidence    = result.get("confidence", None)
         processed_at  = datetime.now(timezone.utc).isoformat()
 
         logger.info(
-            "Ticket %s → category=%s  S=%.3f  model=%s",
-            ticket_id, category, urgency_score, model_used,
+            "Ticket %s → category=%s  S=%.3f  conf=%s  model=%s",
+            ticket_id, category, urgency_score,
+            f"{confidence:.2f}" if confidence is not None else "n/a",
+            model_used,
         )
 
         # ── 3. Persist result ────────────────────────────────────────────────
         ticket_key = _ticket_key(ticket_id)
-        await redis.hset(ticket_key, mapping={
+        mapping = {
             "status":        "processed",
             "category":      category,
             "urgency_score": str(urgency_score),
             "model_used":    model_used,
             "processed_at":  processed_at,
-        })
+        }
+        if confidence is not None:
+            mapping["confidence"] = str(round(confidence, 4))
+        await redis.hset(ticket_key, mapping=mapping)
         await redis.expire(ticket_key, RESULT_TTL_HOURS * 3600)
 
         # Add to processed sorted set (score = urgency_score → ZPOPMAX gives

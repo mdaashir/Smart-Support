@@ -1,0 +1,45 @@
+{
+  "train_sample": 9600,
+  "test_sample": 2400,
+  "category_accuracy": 0.6171,
+  "category_report": {
+    "Billing": {
+      "precision": 0.3498233215547703,
+      "recall": 0.5577464788732395,
+      "f1-score": 0.42996742671009774,
+      "support": 355.0
+    },
+    "Legal": {
+      "precision": 0.05473684210526316,
+      "recall": 0.5416666666666666,
+      "f1-score": 0.0994263862332696,
+      "support": 48.0
+    },
+    "Technical": {
+      "precision": 0.9249448123620309,
+      "recall": 0.629444166249374,
+      "f1-score": 0.7491060786650775,
+      "support": 1997.0
+    },
+    "accuracy": 0.6170833333333333,
+    "macro avg": {
+      "precision": 0.4431683253406881,
+      "recall": 0.5762857705964267,
+      "f1-score": 0.4261666305361483,
+      "support": 2400.0
+    },
+    "weighted avg": {
+      "precision": 0.8224705991083215,
+      "recall": 0.6170833333333333,
+      "f1-score": 0.6889065592147673,
+      "support": 2400.0
+    }
+  },
+  "urgency_rmse": 0.2683,
+  "urgency_mae": 0.2247,
+  "label_classes": [
+    "Billing",
+    "Legal",
+    "Technical"
+  ]
+}

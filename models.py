@@ -6,11 +6,13 @@ to `model_cache/m1.joblib`.  Re-uses the cache on subsequent starts.
 Exported surface:
     route_ticket(subject, body)  → dict with category + urgency_level
     detect_urgency(text)         → int  1 = HIGH, 5 = NORMAL
+    get_metrics()                → dict | None  (cached training metrics)
     CATEGORIES                   → list of label strings
 """
 
 from __future__ import annotations
 
+import json
 import re
 import logging
 from pathlib import Path
@@ -20,10 +22,11 @@ logger = logging.getLogger(__name__)
 # ──────────────────────────────────────────────
 # Paths
 # ──────────────────────────────────────────────
-_ROOT      = Path(__file__).parent
-DATA_PATH  = _ROOT / "dataset" / "aa_dataset-tickets-multi-lang-5-2-50-version.csv"
-CACHE_DIR  = _ROOT / "model_cache"
-CACHE_FILE = CACHE_DIR / "m1.joblib"
+_ROOT        = Path(__file__).parent
+DATA_PATH    = _ROOT / "dataset" / "aa_dataset-tickets-multi-lang-5-2-50-version.csv"
+CACHE_DIR    = _ROOT / "model_cache"
+CACHE_FILE   = CACHE_DIR / "m1.joblib"
+METRICS_FILE = CACHE_DIR / "m1_metrics.json"
 
 CATEGORIES = ["Billing", "Legal", "Technical"]
 
@@ -62,9 +65,11 @@ def detect_urgency(text: str) -> int:
 # Model training
 # ──────────────────────────────────────────────
 def _train() -> tuple:
-    """Train TF-IDF + LinearSVC on the real dataset."""
+    """Train TF-IDF + LinearSVC on the real dataset and save metrics."""
     import pandas as pd
     from sklearn.feature_extraction.text import TfidfVectorizer
+    from sklearn.metrics import accuracy_score, classification_report
+    from sklearn.model_selection import train_test_split
     from sklearn.svm import LinearSVC
 
     logger.info("Loading dataset from %s …", DATA_PATH)
@@ -75,15 +80,44 @@ def _train() -> tuple:
     logger.info("Label distribution: %s", df["label"].value_counts().to_dict())
 
     vec = TfidfVectorizer(
-        analyzer="char",
+        analyzer="char_wb",
         ngram_range=(3, 5),
-        min_df=5,
-        max_features=20_000,
+        min_df=3,
+        max_features=50_000,
+        sublinear_tf=True,
     )
-    clf = LinearSVC(class_weight="balanced")
+    clf = LinearSVC(class_weight="balanced", max_iter=2000, C=0.5)
 
     X = vec.fit_transform(df["text"])
+
+    # Hold out 15% for evaluation metrics
+    X_tr, X_te, y_tr, y_te = train_test_split(
+        X, df["label"], test_size=0.15, stratify=df["label"], random_state=42
+    )
+    clf.fit(X_tr, y_tr)
+
+    y_pred  = clf.predict(X_te)
+    acc     = accuracy_score(y_te, y_pred)
+    report  = classification_report(y_te, y_pred, output_dict=True)
+    logger.info(
+        "M1 evaluation → acc=%.4f\n%s",
+        acc,
+        classification_report(y_te, y_pred)
+    )
+
+    # Refit on full dataset for production
     clf.fit(X, df["label"])
+
+    # Persist metrics
+    metrics = {
+        "train_size":       len(df),
+        "eval_size":        len(y_te),
+        "accuracy":         round(acc, 4),
+        "classification_report": report,
+    }
+    CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    METRICS_FILE.write_text(json.dumps(metrics, indent=2))
+    logger.info("M1 metrics saved to %s", METRICS_FILE)
 
     logger.info("Training complete.")
     return vec, clf
@@ -138,6 +172,28 @@ def route_ticket(subject: str, body: str) -> dict:
         "category":      _classifier.predict(vec)[0],
         "urgency_level": detect_urgency(text),
     }
+
+
+def get_metrics() -> dict | None:
+    """Return normalized M1 training/eval metrics, or None if not yet trained."""
+    if METRICS_FILE.exists():
+        try:
+            raw = json.loads(METRICS_FILE.read_text())
+            # Flatten classification_report to top level for easy API consumption
+            report = raw.get("classification_report", {})
+            return {
+                "accuracy":      raw.get("accuracy"),
+                "weighted avg":  report.get("weighted avg"),
+                "macro avg":     report.get("macro avg"),
+                "Billing":       report.get("Billing"),
+                "Legal":         report.get("Legal"),
+                "Technical":     report.get("Technical"),
+                "train_size":    raw.get("train_size"),
+                "eval_size":     raw.get("eval_size"),
+            }
+        except Exception:
+            return None
+    return None
 
 
 # ──────────────────────────────────────────────
