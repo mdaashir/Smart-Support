@@ -23,12 +23,18 @@ TECHNICAL_ISSUES = [
     "slow performance", "bug in dashboard",
 ]
 
-LEGAL_ISSUES = [
-    "contract agreement", "terms and conditions",
-    "data privacy compliance", "legal notice",
-    "service agreement clarification",
-    "GDPR request", "data deletion request",
-    "liability concern",
+HR_ISSUES = [
+    "employee onboarding delay", "payroll discrepancy",
+    "PTO request not approved", "benefits enrollment issue",
+    "workplace harassment report", "interview scheduling",
+    "training programme access", "contract renewal query",
+]
+
+GENERAL_ISSUES = [
+    "general inquiry about services", "office address question",
+    "hours of operation", "feedback on experience",
+    "how to contact support", "account overview request",
+    "status update on request", "question about policies",
 ]
 
 URGENCY_WORDS = [
@@ -51,10 +57,11 @@ TYPOS: dict[str, str] = {
 CATEGORY_ISSUES = {
     "Billing": BILLING_ISSUES,
     "Technical": TECHNICAL_ISSUES,
-    "Legal": LEGAL_ISSUES,
+    "HR": HR_ISSUES,
+    "General": GENERAL_ISSUES,
 }
 
-ALL_ISSUES = BILLING_ISSUES + TECHNICAL_ISSUES + LEGAL_ISSUES
+ALL_ISSUES = BILLING_ISSUES + TECHNICAL_ISSUES + HR_ISSUES + GENERAL_ISSUES
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────

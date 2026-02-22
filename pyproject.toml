@@ -17,6 +17,7 @@ dependencies = [
     "torch>=2.4",
     "transformers>=4.46",
     "tqdm>=4.66",
+    "datasets>=4.5.0",
 ]
 
 [project.optional-dependencies]

@@ -30,12 +30,12 @@ def trained_logreg(synthetic_df):
 # ── Data tests ───────────────────────────────────────────────────────────
 
 def test_dataset_shape(synthetic_df):
-    assert synthetic_df.shape == (1500, 2)
+    assert synthetic_df.shape == (2000, 2)  # 4 categories × 500
 
 
 def test_class_balance(synthetic_df):
     counts = synthetic_df["category"].value_counts()
-    assert set(counts.index) == {"Billing", "Technical", "Legal"}
+    assert set(counts.index) == {"Billing", "Technical", "HR", "General"}
     for c in counts:
         assert c == 500
 
@@ -52,9 +52,9 @@ def test_logreg_accuracy(synthetic_df, trained_logreg):
 
 
 def test_logreg_predict_returns_valid_classes(trained_logreg):
-    preds = trained_logreg.predict(["refund request", "server down", "GDPR request"])
+    preds = trained_logreg.predict(["refund request", "server down", "PTO request", "general inquiry"])
     for p in preds:
-        assert p in {"Billing", "Technical", "Legal"}
+        assert p in {"Billing", "Technical", "HR", "General"}
 
 
 # ── Urgency tests ────────────────────────────────────────────────────────

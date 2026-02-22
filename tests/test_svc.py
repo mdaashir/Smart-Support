@@ -28,7 +28,7 @@ def test_svc_accuracy(svc_artifacts):
 
 def test_svc_predict_one(svc_artifacts):
     clf, *_ = svc_artifacts
-    assert clf.predict_one("refund request") in {"Billing", "Technical", "Legal"}
+    assert clf.predict_one("refund request") in {"Billing", "Technical", "HR", "General"}
 
 
 def test_route_ticket_schema(svc_artifacts):
@@ -36,7 +36,7 @@ def test_route_ticket_schema(svc_artifacts):
     result = route_ticket("Invoice issue", "Charged twice for last month", classifier=clf)
     assert "category" in result
     assert "urgency" in result
-    assert result["category"] in {"Billing", "Technical", "Legal"}
+    assert result["category"] in {"Billing", "Technical", "HR", "General"}
     assert result["urgency"] in {"1(HIGH)", "0(NORMAL)"}
 
 

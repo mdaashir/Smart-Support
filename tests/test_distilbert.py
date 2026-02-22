@@ -39,9 +39,10 @@ def mini_classifier():
     texts = [
         "charged twice", "refund request", "invoice incorrect",
         "server down", "app not loading", "500 internal error",
-        "GDPR request", "legal notice", "data privacy compliance",
+        "employee onboarding delay", "payroll discrepancy", "PTO request",
+        "general inquiry", "office address question", "status update",
     ]
-    labels = ["Billing"] * 3 + ["Technical"] * 3 + ["Legal"] * 3
+    labels = ["Billing"] * 3 + ["Technical"] * 3 + ["HR"] * 3 + ["General"] * 3
     clf.fit(texts, labels)
     return clf
 
@@ -49,9 +50,9 @@ def mini_classifier():
 def test_classifier_predict_returns_valid_labels(mini_classifier):
     preds = mini_classifier.predict(["refund needed", "server outage"])
     for p in preds:
-        assert p in {"Billing", "Technical", "Legal"}
+        assert p in {"Billing", "Technical", "HR", "General"}
 
 
 def test_classifier_predict_one(mini_classifier):
-    pred = mini_classifier.predict_one("contract clause clarification")
-    assert pred in {"Billing", "Technical", "Legal"}
+    pred = mini_classifier.predict_one("payroll issue with this month salary")
+    assert pred in {"Billing", "Technical", "HR", "General"}

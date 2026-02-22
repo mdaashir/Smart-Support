@@ -24,6 +24,8 @@ def test_health(client):
     data = resp.json()
     assert data["status"] == "ok"
     assert data["model_loaded"] is True
+    assert set(data["categories"]) == {"Billing", "Technical", "HR", "General"}
+    assert data["uptime_seconds"] >= 0
 
 
 # ── Route endpoint ───────────────────────────────────────────────────────
@@ -35,7 +37,7 @@ def test_route_success(client):
     })
     assert resp.status_code == 200
     data = resp.json()
-    assert data["category"] in {"Billing", "Technical", "Legal"}
+    assert data["category"] in {"Billing", "Technical", "HR", "General"}
     assert data["urgency"] in {"1(HIGH)", "0(NORMAL)"}
     assert "model_used" in data
 

@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 
 class DistilBertEmbedder:
-    """Produce [CLS] embeddings from ``distilbert-base-uncased``."""
+    """Produce [CLS] embeddings from a multilingual DistilBERT model."""
 
     def __init__(
         self,
