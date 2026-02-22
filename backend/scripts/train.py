@@ -66,7 +66,7 @@ def train_milestone_1():
     from backend.models.tfidf_logreg import TfidfLogRegClassifier
     from backend.evaluation.evaluator import evaluate_and_save
 
-    logger.info("═══ Milestone 1: Real Data + LogReg ═══")
+    logger.info("=== Milestone 1: Real Data + LogReg ===")
     df = load_dataset()
     X_tr, X_te, y_tr, y_te = split_dataset(df)
 
@@ -94,7 +94,7 @@ def train_milestone_2():
     from backend.routing.urgency_regressor import UrgencyRegressor
     from backend.evaluation.evaluator import evaluate_and_save
 
-    logger.info("═══ Milestone 2: Real Data + LinearSVC + Urgency ═══")
+    logger.info("=== Milestone 2: Real Data + LinearSVC + Urgency ===")
     df = load_dataset()
     X_tr, X_te, y_tr, y_te = split_dataset(df)
 
@@ -128,28 +128,27 @@ def train_milestone_2():
 # ─── Milestone 3 — Real Data + DistilBERT ───────────────────────────────
 
 def train_milestone_3():
-    from backend.config import MODEL_DIR
+    from backend.config import DISTILBERT, MODEL_DIR
     from backend.data.dataset_loader import load_dataset, split_dataset
     from backend.models.distilbert_classifier import DistilBertTicketClassifier
     from backend.evaluation.evaluator import evaluate_and_save
 
-    logger.info("═══ Milestone 3: Real Data + DistilBERT ═══")
+    logger.info("=== Milestone 3: Real Data + DistilBERT (mean-pool) ===")
     df = load_dataset()
     X_tr, X_te, y_tr, y_te = split_dataset(df)
 
-    # Use a subset for DistilBERT to avoid excessive training time
-    from sklearn.model_selection import train_test_split as _tts
-
-    max_train = 10_000
+    max_train = DISTILBERT["max_train"]
     if len(X_tr) > max_train:
+        from sklearn.model_selection import train_test_split as _tts
         X_tr, _, y_tr, _ = _tts(
             X_tr, y_tr, train_size=max_train,
             stratify=y_tr, random_state=42,
         )
         logger.info("Sub-sampled training set to %d for DistilBERT", max_train)
 
-    max_test = 3_000
+    max_test = DISTILBERT["max_test"]
     if len(X_te) > max_test:
+        from sklearn.model_selection import train_test_split as _tts
         X_te, _, y_te, _ = _tts(
             X_te, y_te, train_size=max_test,
             stratify=y_te, random_state=42,
@@ -195,15 +194,23 @@ def main():
         results[t] = MILESTONES[t]()
 
     # ── Summary ──────────────────────────────────────────────────────
-    logger.info("╔══════════════════════════════════════════╗")
-    logger.info("║          Training Summary                ║")
-    logger.info("╠══════════════════════════════════════════╣")
+    logger.info("+------------------------------------------+")
+    logger.info("|          Training Summary                |")
+    logger.info("+------------------------------------------+")
     for m, metrics in results.items():
         logger.info(
-            "║  Milestone %s — acc=%.4f  F1=%.4f  ║",
+            "|  Milestone %s -- acc=%.4f  F1=%.4f   |",
             m, metrics["accuracy"], metrics["weighted_f1"],
         )
-    logger.info("╚══════════════════════════════════════════╝")
+        # Per-class breakdown from classification report
+        report = metrics.get("report", {})
+        for label in sorted(k for k in report if k not in ("accuracy", "macro avg", "weighted avg")):
+            stats = report[label]
+            logger.info(
+                "|    %-10s  prec=%.3f  rec=%.3f  f1=%.3f |",
+                label, stats["precision"], stats["recall"], stats["f1-score"],
+            )
+    logger.info("+------------------------------------------+")
 
 
 if __name__ == "__main__":

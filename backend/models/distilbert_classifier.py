@@ -20,29 +20,39 @@ logger = logging.getLogger(__name__)
 
 
 class DistilBertEmbedder:
-    """Produce [CLS] embeddings from a multilingual DistilBERT model."""
+    """Produce mean-pooled embeddings from a multilingual DistilBERT model."""
 
     def __init__(
         self,
         model_name: str = DISTILBERT["model_name"],
         max_length: int = DISTILBERT["max_length"],
         batch_size: int = DISTILBERT.get("batch_size", 64),
+        pooling: str = DISTILBERT.get("pooling", "mean"),
     ) -> None:
         self.model_name = model_name
         self.max_length = max_length
         self.batch_size = batch_size
+        self.pooling = pooling
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        logger.info("Loading %s on %s …", model_name, self.device)
+        logger.info("Loading %s on %s ...", model_name, self.device)
 
         self.tokenizer = DistilBertTokenizerFast.from_pretrained(model_name)
         self.model = DistilBertModel.from_pretrained(model_name).to(self.device)
         self.model.eval()
 
     def embed(self, texts: list[str]) -> np.ndarray:
-        """Return ``(len(texts), 768)`` CLS embeddings."""
+        """Return (len(texts), 768) embeddings using mean-pooling over non-pad tokens.
+
+        Mean-pooling uses the full sequence representation rather than the
+        single [CLS] token, which consistently improves classification quality.
+        """
         all_embs: list[np.ndarray] = []
-        for i in tqdm(range(0, len(texts), self.batch_size), desc="Embedding", disable=len(texts) < 50):
+        for i in tqdm(
+            range(0, len(texts), self.batch_size),
+            desc="Embedding",
+            disable=len(texts) < 50,
+        ):
             batch = texts[i : i + self.batch_size]
             inputs = self.tokenizer(
                 batch,
@@ -53,8 +63,19 @@ class DistilBertEmbedder:
             ).to(self.device)
             with torch.no_grad():
                 outputs = self.model(**inputs)
-            cls = outputs.last_hidden_state[:, 0, :].cpu().numpy()
-            all_embs.append(cls)
+
+            if self.pooling == "mean":
+                # Mask padding tokens before averaging
+                mask = inputs["attention_mask"].unsqueeze(-1).float()
+                token_emb = outputs.last_hidden_state  # (B, T, 768)
+                summed = (token_emb * mask).sum(dim=1)
+                counts = mask.sum(dim=1).clamp(min=1e-9)
+                emb = (summed / counts).cpu().numpy()
+            else:
+                # CLS-only fallback
+                emb = outputs.last_hidden_state[:, 0, :].cpu().numpy()
+
+            all_embs.append(emb)
         return np.vstack(all_embs)
 
 
@@ -67,6 +88,7 @@ class DistilBertTicketClassifier:
         self.clf = LogisticRegression(
             max_iter=DISTILBERT["max_iter"],
             C=DISTILBERT["C"],
+            solver="saga",
             class_weight="balanced",
         )
 

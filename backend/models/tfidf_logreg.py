@@ -24,11 +24,14 @@ class TfidfLogRegClassifier:
             ("tfidf", TfidfVectorizer(
                 ngram_range=TFIDF_LOGREG["ngram_range"],
                 max_features=TFIDF_LOGREG["max_features"],
+                min_df=TFIDF_LOGREG["min_df"],
+                sublinear_tf=TFIDF_LOGREG["sublinear_tf"],
                 stop_words=TFIDF_LOGREG["stop_words"],
             )),
             ("clf", LogisticRegression(
                 max_iter=TFIDF_LOGREG["max_iter"],
                 C=TFIDF_LOGREG["C"],
+                solver=TFIDF_LOGREG["solver"],
                 class_weight="balanced",
             )),
         ])
