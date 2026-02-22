@@ -1,0 +1,24 @@
+# ── Version control & IDE ──────────────────────────────────────────────────
+.git
+.gitignore
+.vscode
+.agents
+
+# ── Python dev artifacts ────────────────────────────────────────────────────
+.venv
+.python-version
+**/__pycache__
+**/*.pyc
+**/*.pyo
+.pytest_cache
+
+# ── Not needed in runtime image ─────────────────────────────────────────────
+backend/tests
+backend/scripts
+README.md
+2. Problem Statement.pdf
+skills-lock.json
+models.ipynb
+
+# ── API log artifacts ────────────────────────────────────────────────────────
+api_*.txt

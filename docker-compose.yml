@@ -1,0 +1,56 @@
+# Smart-Support — Docker Compose
+#
+# Services:
+#   backend   — FastAPI + ML routing engine  (port 8000)
+#   frontend  — Dash interactive dashboard   (port 8050)
+#
+# Usage:
+#   docker compose up --build          # first run
+#   docker compose up -d               # detached
+#   docker compose logs -f backend     # tail API logs
+#   MODEL_VARIANT=distilbert docker compose up
+#
+# The saved_models/ and data/ are bind-mounted so the host-trained models
+# are available inside the container without rebuilding the image.
+
+services:
+
+  # ── FastAPI backend ────────────────────────────────────────────────────────
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - MODEL_VARIANT=${MODEL_VARIANT:-svc}
+    volumes:
+      # Mount trained models and dataset from host (read-only at runtime)
+      - ./backend/saved_models:/app/backend/saved_models:ro
+      - ./backend/data:/app/backend/data:ro
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"
+      interval: 30s
+      timeout: 10s
+      start_period: 90s
+      retries: 3
+    restart: unless-stopped
+
+  # ── Dash frontend ──────────────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "8050:8050"
+    environment:
+      # Resolve to the backend service by its docker-compose service name
+      - API_BASE=http://backend:8000
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped

@@ -97,7 +97,16 @@ python -m backend.scripts.train --milestone all
 # Choose model: logreg | svc | distilbert
 MODEL_VARIANT=svc uvicorn backend.api.main:app --reload
 
-# Open the dashboard at http://localhost:8000/ui
+# Open the legacy HTML dashboard at http://localhost:8000/ui
+```
+
+### 4. Launch the Dash dashboard
+
+```bash
+# In a separate terminal (API must be running on :8000)
+uv run python frontend/dash_app.py
+
+# Open http://localhost:8050
 ```
 
 ### 4. Route a ticket (sync)
@@ -169,7 +178,8 @@ The dataset is automatically downloaded and cached on first use. **No synthetic 
 ```
 Smart-Support/
 ├── frontend/
-│   └── index.html                 # Mission-control dashboard UI
+│   ├── index.html                 # Legacy HTML dashboard (served at /ui)
+│   └── dash_app.py                # Dash interactive dashboard (port 8050)
 ├── backend/
 │   ├── config.py                  # Centralised config (3 categories, M2/M3 params)
 │   ├── api/
@@ -205,6 +215,10 @@ Smart-Support/
 │   └── test_api.py                # API endpoint tests (sync, async, batch, stats)
 ├── data/                          # Cached HuggingFace dataset (auto-downloaded)
 ├── saved_models/                  # Trained model artifacts (.joblib)
+├── Dockerfile                     # Backend image (multi-stage, CPU torch)
+├── Dockerfile.frontend            # Frontend image (~250 MB, Dash only)
+├── docker-compose.yml             # Orchestrates backend + frontend
+├── .dockerignore
 ├── pyproject.toml
 └── README.md
 ```
@@ -256,12 +270,53 @@ Smart-Support/
 uv run pytest -v
 
 # Run specific milestone tests
-uv run pytest tests/test_synthetic.py -v   # M1
-uv run pytest tests/test_svc.py -v         # M2
-uv run pytest tests/test_distilbert.py -v  # M3
-uv run pytest tests/test_m2_m3.py -v       # M2/M3 components
-uv run pytest tests/test_api.py -v         # API
+uv run pytest backend/tests/test_synthetic.py -v   # M1
+uv run pytest backend/tests/test_svc.py -v         # M2
+uv run pytest backend/tests/test_distilbert.py -v  # M3
+uv run pytest backend/tests/test_m2_m3.py -v       # M2/M3 components
+uv run pytest backend/tests/test_api.py -v         # API
 ```
+
+---
+
+## Docker
+
+### Build and run everything
+
+```bash
+# Train models first (required — models are bind-mounted into the container)
+uv run python -m backend.scripts.train --milestone all
+
+# Build images and start services
+docker compose up --build
+
+# Dashboard → http://localhost:8050
+# API       → http://localhost:8000
+# Swagger   → http://localhost:8000/docs
+```
+
+### Individual services
+
+```bash
+# Backend only
+docker build -t smart-support-backend .
+docker run -p 8000:8000 \
+  -v $(pwd)/backend/saved_models:/app/backend/saved_models:ro \
+  -v $(pwd)/backend/data:/app/backend/data:ro \
+  -e MODEL_VARIANT=svc \
+  smart-support-backend
+
+# Frontend only (requires backend running)
+docker build -f Dockerfile.frontend -t smart-support-frontend .
+docker run -p 8050:8050 -e API_BASE=http://host.docker.internal:8000 smart-support-frontend
+```
+
+### Image sizes
+
+| Image | Notes |
+|---|---|
+| Backend | ~2.5 GB (CPU torch ~700 MB, scikit-learn + transformers stack) |
+| Frontend | ~250 MB (Dash + Plotly + requests only, no ML) |
 
 ---
 

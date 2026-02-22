@@ -23,8 +23,6 @@ import logging
 import sys
 import time
 
-import numpy as np
-
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s  %(levelname)-8s  %(name)s — %(message)s",

@@ -16,11 +16,9 @@ from datetime import datetime, timezone
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from backend.config import CATEGORIES, MODEL_DIR, URGENCY_WEBHOOK_THRESHOLD
-from backend.routing.router import route_ticket
 
 logger = logging.getLogger(__name__)
 
@@ -313,12 +311,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# ── Serve the frontend dashboard at /ui ───────────────────────────────────
-from pathlib import Path as _Path
-_frontend = _Path(__file__).resolve().parent.parent.parent / "frontend"
-if _frontend.exists():
-    app.mount("/ui", StaticFiles(directory=str(_frontend), html=True), name="ui")
 
 
 @app.get("/health", response_model=HealthResponse)
