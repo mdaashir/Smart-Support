@@ -51,7 +51,7 @@ class TfidfSVCClassifier:
                 C=TFIDF_SVC["C"],
                 class_weight="balanced",
                 max_iter=5_000,
-                dual=True,
+                dual="auto",  # sklearn >= 1.3: auto-selects primal/dual based on data shape
             )),
         ])
 
@@ -83,7 +83,7 @@ class TfidfSVCClassifier:
             "report": report,
         }
         logger.info(
-            "Evaluation -- acc=%.4f  macro-F1=%.4f  weighted-F1=%.4f",
+            "Evaluation — acc=%.4f  macro-F1=%.4f  weighted-F1=%.4f",
             metrics["accuracy"], metrics["macro_f1"], metrics["weighted_f1"],
         )
         return metrics
@@ -93,9 +93,9 @@ class TfidfSVCClassifier:
         path = Path(path)
         path.parent.mkdir(parents=True, exist_ok=True)
         joblib.dump(self.pipeline, path)
-        logger.info("Model saved -> %s", path)
+        logger.info("Model saved → %s", path)
 
     def load(self, path: str | Path) -> "TfidfSVCClassifier":
         self.pipeline = joblib.load(path)
-        logger.info("Model loaded <- %s", path)
+        logger.info("Model loaded ← %s", path)
         return self

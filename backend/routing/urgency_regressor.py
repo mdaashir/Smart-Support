@@ -8,7 +8,6 @@ heuristic when no trained model is available.
 from __future__ import annotations
 
 import logging
-import re
 from pathlib import Path
 
 import joblib
@@ -17,13 +16,10 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import Ridge
 from sklearn.pipeline import Pipeline
 
-from backend.config import URGENT_KEYWORDS, URGENCY_WEBHOOK_THRESHOLD
+from backend.config import URGENCY_WEBHOOK_THRESHOLD
+from backend.routing.urgency import _URGENT_RE  # shared compiled regex
 
 logger = logging.getLogger(__name__)
-
-# ── Regex fallback (same as M1) ─────────────────────────────────────────
-_PATTERN = r"\b(" + "|".join(re.escape(k) for k in URGENT_KEYWORDS) + r")\b"
-_URGENT_RE = re.compile(_PATTERN, re.IGNORECASE)
 
 
 def _keyword_score(text: str) -> float:

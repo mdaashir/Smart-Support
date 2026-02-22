@@ -1,11 +1,17 @@
-"""Milestone 2 — Async broker with 202 Accepted pattern.
+"""Legacy in-memory broker — superseded by RedisBroker (redis_broker.py).
 
-Provides an asyncio-based in-memory broker that:
-* Accepts tickets immediately (202 Accepted)
-* Queues them for background processing via asyncio.Queue
-* Supports atomic ticket ingestion with asyncio.Lock
-* Falls back gracefully — no external Redis required at runtime
+.. deprecated::
+    Use ``backend.routing.redis_broker.RedisBroker`` instead.
+    This module is kept only for reference; it is no longer imported by the
+    API or any production code path.
 """
+import warnings
+warnings.warn(
+    "backend.routing.broker.AsyncBroker is deprecated. "
+    "Use backend.routing.redis_broker.RedisBroker instead.",
+    DeprecationWarning,
+    stacklevel=2,
+)
 
 from __future__ import annotations
 

@@ -11,6 +11,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+import uuid
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 
@@ -221,8 +222,8 @@ async def lifespan(app: FastAPI):
 def _route_ticket_full(subject: str, body: str) -> dict:
     """Core routing logic — classification + urgency + skill routing + dedup."""
     from backend.preprocessing.text_cleaner import combine_fields
-    import uuid
 
+    ticket_id = str(uuid.uuid4())
     text = combine_fields(subject, body)
 
     # Classification (with circuit breaker if available)
@@ -247,7 +248,6 @@ def _route_ticket_full(subject: str, body: str) -> dict:
     dedup_info = None
     deduplicator = _state.get("deduplicator")
     if deduplicator:
-        ticket_id = str(uuid.uuid4())
         try:
             dedup_info = deduplicator.check(ticket_id, text)
         except Exception:
@@ -274,12 +274,11 @@ def _route_ticket_full(subject: str, body: str) -> dict:
         _state["webhook_fires"] += 1
         # Fire webhook asynchronously (best-effort)
         try:
-            import asyncio
             from backend.routing.webhook import fire_webhook
             loop = asyncio.get_event_loop()
             if loop.is_running():
                 asyncio.ensure_future(fire_webhook(
-                    ticket_id=ticket_id if dedup_info else "N/A",
+                    ticket_id=ticket_id,
                     category=category,
                     urgency_score=urgency_score,
                     text_preview=text[:200],
@@ -367,13 +366,73 @@ async def get_job_status(job_id: str):
 
 @app.post("/route/batch", response_model=BatchTicketResponse)
 async def route_batch(req: BatchTicketRequest):
-    """Route up to 100 tickets in a single request — ideal for bulk triage."""
+    """Route up to 100 tickets using Hungarian-algorithm batch assignment.
+
+    Classifies all tickets in one pass, then runs constraint-optimised
+    skill routing via ``SkillRouter.batch_assign()`` for globally optimal
+    agent assignment before assembling results.
+    """
     if _state["classifier"] is None:
         raise HTTPException(status_code=503, detail="Model not loaded")
+
+    from backend.preprocessing.text_cleaner import combine_fields
+    from backend.routing.urgency import urgency_label
+
+    # 1. Vectorise texts and classify in one batch
+    clf = _state["circuit_breaker"] or _state["classifier"]
+    urg_reg = _state.get("urgency_regressor")
+    deduplicator = _state.get("deduplicator")
+    skill_router = _state.get("skill_router")
+
+    texts = [combine_fields(t.subject, t.body) for t in req.tickets]
+    categories = clf.predict(texts)
+    urgencies = [urgency_label(t) for t in texts]
+    urgency_scores = [
+        urg_reg.predict_score(t) if (urg_reg and urg_reg.is_trained) else 0.0
+        for t in texts
+    ]
+
+    # 2. Constraint-optimised batch agent assignment (Hungarian algorithm)
+    ticket_ids = [str(uuid.uuid4()) for _ in req.tickets]
+    if skill_router:
+        batch_items = [
+            {"id": tid, "category": cat, "urgency": score}
+            for tid, cat, score in zip(ticket_ids, categories, urgency_scores)
+        ]
+        assignments = skill_router.batch_assign(batch_items)
+    else:
+        assignments = [
+            {"ticket_id": tid, "agent": None, "affinity": 0.0, "load": 0}
+            for tid in ticket_ids
+        ]
+
+    # 3. Dedup check + stats + assemble
     results = []
-    for t in req.tickets:
-        r = _route_ticket_full(t.subject, t.body)
-        results.append(TicketResponse(**r))
+    for tid, text, cat, urg, score, assign in zip(
+        ticket_ids, texts, categories, urgencies, urgency_scores, assignments
+    ):
+        dedup_info = None
+        if deduplicator:
+            try:
+                dedup_info = deduplicator.check(tid, text)
+            except Exception:
+                pass
+
+        _state["tickets_routed"] += 1
+        if cat in _state["category_counts"]:
+            _state["category_counts"][cat] += 1
+        if urg == "1(HIGH)":
+            _state["urgent_count"] += 1
+
+        results.append(TicketResponse(
+            category=cat,
+            urgency=urg,
+            urgency_score=round(score, 4),
+            model_used=_state["variant"],
+            agent=assign.get("agent"),
+            dedup=dedup_info,
+        ))
+
     return BatchTicketResponse(results=results, count=len(results))
 
 
